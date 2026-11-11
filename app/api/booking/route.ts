@@ -26,6 +26,9 @@ export async function POST(req: Request) {
     if (!validEmail(email)) {
       return NextResponse.json({ ok: false, error: 'That email address does not look right.' }, { status: 400 });
     }
+    if (!str(d?.pickup) || !str(d?.dropoff) || !/^\d{4}-\d{2}-\d{2}$/.test(str(d?.date, 10)) || !/^\d{2}:\d{2}$/.test(str(d?.time, 5))) {
+      return NextResponse.json({ ok: false, error: 'Please provide pickup and destination addresses, a ride date, and appointment time.' }, { status: 400 });
+    }
 
     const row = {
       source: 'website',
@@ -49,14 +52,18 @@ export async function POST(req: Request) {
     const db = serviceDb();
     if (db) {
       const { error } = await db.from('bookings').insert(row);
-      if (error) throw error;
+      if (error) {
+        console.error('[EdgeLIFE] booking database error', error.code);
+        return NextResponse.json({ ok: false, error: 'We could not save your request. Please call dispatch to arrange your ride.' }, { status: 503 });
+      }
     } else if (process.env.NODE_ENV !== 'production') {
       // Local development without Supabase: keep the submission in a file.
       const file = path.join(process.cwd(), 'data', 'submissions.ndjson');
       await fs.mkdir(path.dirname(file), { recursive: true });
       await fs.appendFile(file, JSON.stringify({ type: 'booking', at: new Date().toISOString(), ...row }) + '\n');
     } else {
-      throw new Error('Supabase is not configured');
+      console.error('[EdgeLIFE] booking unavailable: configure the Supabase project URL and server secret key');
+      return NextResponse.json({ ok: false, error: 'Online booking is temporarily unavailable. Please call dispatch to arrange your ride.' }, { status: 503 });
     }
 
     await notify('New ride request: ' + riderName, [

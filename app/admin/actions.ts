@@ -29,7 +29,7 @@ export async function signIn(formData: FormData) {
   if (tooMany('login:' + ip, 8, 15 * 60 * 1000)) redirect('/admin/login?error=slow');
   const email = str(formData.get('email'), 200).toLowerCase();
   const password = String(formData.get('password') || '');
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) redirect('/admin/login?error=config');
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) redirect('/admin/login?error=config');
   if (!allowedEmails().includes(email)) redirect('/admin/login?error=invalid');
   const supabase = await authClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

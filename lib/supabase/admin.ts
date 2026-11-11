@@ -6,14 +6,18 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let cached: SupabaseClient | null = null;
 
+function secretKey() {
+  return process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 export function hasSupabase() {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && secretKey());
 }
 
 export function serviceDb(): SupabaseClient | null {
   if (!hasSupabase()) return null;
   if (!cached) {
-    cached = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    cached = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, secretKey()!, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }

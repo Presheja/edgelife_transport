@@ -12,7 +12,7 @@ The public site always renders, even if the database is down: rates, contact det
 1. Create a project at supabase.com. Pick the US East region. Save the database password somewhere safe.
 2. **SQL Editor → New query**, paste the whole of `supabase/schema.sql`, click **Run**. This creates the tables and locks them down.
 3. **Authentication → Users → Add user → Create new user.** Use the email you will sign in with and a strong password. Tick "Auto Confirm User". Create one user per person who needs admin access.
-4. **Project Settings → API.** Copy three values: the Project URL, the `anon` public key, and the `service_role` secret key.
+4. Copy the Project URL from **Connect**, then the publishable and secret keys from **Project Settings → API Keys**. Put the publishable key in `NEXT_PUBLIC_SUPABASE_ANON_KEY` and the secret key in `SUPABASE_SERVICE_ROLE_KEY`. The newer names `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` also work. Existing legacy keys remain supported.
    The service-role key is a master key. It goes only into Hostinger's environment variables. Never paste it into GitHub, a chat, or a screenshot.
 
 ## 2. Put the code on GitHub
@@ -56,6 +56,10 @@ SMTP_USER=info@edgelifetransport.com   SMTP_PASS=...   NOTIFY_TO=info@edgelifetr
 Then connect the domain and turn on SSL. Every `git push` to `main` redeploys.
 
 ## 4. First visit
+
+The homepage includes a real booking form. The price calculator passes the rider's mobility, pickup town, trip type and estimate into `/book`; enter the full addresses and appointment details before submitting. Estimates are requests, and dispatch confirms the final price. Bookings are stored in Supabase, not GitHub. If online booking is unavailable, confirm that `supabase/schema.sql` has been run and the project URL and secret key belong to that same Supabase project. Updating hosting environment variables requires a rebuild/redeploy.
+
+The attached ZIP matched the initial repository exactly. The separate HTML was a prototype: its booking button only showed a success screen. This project retains the working API and the existing wheelchair/ambulatory rates while bringing the form onto the homepage, connecting estimates to requests, and using the supplied vehicle photos and logo.
 
 Go to `/admin` and sign in. In order:
 1. **Settings**: check the phone, email, address, hours and town lists.

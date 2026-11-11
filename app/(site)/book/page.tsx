@@ -1,40 +1,24 @@
 import type { Metadata } from 'next';
-import BookingForm from '@/components/BookingForm';
-import { TickLight } from '@/components/Icons';
-import { getCompany } from '@/lib/settings';
-import { telHref } from '@/lib/format';
+import BookingSection from '@/components/BookingSection';
+import { getCompany, getRates } from '@/lib/settings';
+import { quote } from '@/lib/rates';
+import { money } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Book a Ride',
-  description: 'Request a wheelchair van or ambulatory ride in Taunton and Southeastern Massachusetts. No card required. Dispatch confirms your price before the ride is booked.',
+  description: 'Request a wheelchair van or ambulatory ride in Taunton and Southeastern Massachusetts. Dispatch confirms your price before the ride is booked.',
 };
 
-export default async function Book() {
-  const company = await getCompany();
-  return (
-    <section id="book" style={{ background: 'var(--sand)' }}>
-      <div className="wrap">
-        <div className="book reveal">
-          <div className="book-side">
-            <div className="eyebrow on-dark">Book a ride</div>
-            <h2>Let&rsquo;s get them where they need to be.</h2>
-            <p>Fill this out and dispatch will call or text you back with a firm price &mdash;
-              {company.responseTime}.</p>
-            <ul className="bside-list">
-              {['No card required to request a ride', 'Price confirmed before the ride is booked',
-                'Wheelchair and ambulatory rides', 'Weekly rides set up in one call'].map(t => (
-                <li key={t}><TickLight />{t}</li>
-              ))}
-            </ul>
-            <div className="callout">
-              <small>Prefer to talk to a person?</small>
-              <a href={telHref(company.phone)}>{company.phone}</a>
-              <p style={{ fontSize: '.84rem', marginTop: 6, color: 'rgba(255,255,255,.5)' }}>{company.hours}</p>
-            </div>
-          </div>
-          <BookingForm phone={company.phone} responseTime={company.responseTime} />
-        </div>
-      </div>
-    </section>
-  );
+export default async function Book({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [company, rates, params] = await Promise.all([getCompany(), getRates(), searchParams]);
+  const value = (key: string) => typeof params[key] === 'string' ? (params[key] as string).slice(0, 300) : '';
+  const mobility = value('mobility') === 'wheelchair' ? 'wheelchair' : 'ambulatory';
+  const tripType = value('tripType') === 'one' ? 'one' : 'round';
+  const miles = Number(value('miles'));
+  const hasEstimate = value('miles') !== '' && Number.isFinite(miles) && miles >= 0 && miles <= 200;
+  const estimate = hasEstimate ? quote(rates, { level: mobility, miles, roundTrip: tripType === 'round' }) : null;
+  return <BookingSection company={company} initial={{
+    mobility, tripType, pickup: value('pickup'),
+    notes: estimate ? `Requested estimate: ${money(estimate.total)}; ${mobility}; ${miles} miles one way; ${tripType === 'round' ? 'round trip' : 'one way'}. Destination area: ${value('destination')}. Dispatch must confirm the final price.` : '',
+  }} />;
 }

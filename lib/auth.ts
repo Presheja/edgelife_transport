@@ -8,7 +8,7 @@ export function allowedEmails(): string[] {
 }
 
 export async function currentAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) return null;
   const supabase = await authClient();
   const { data } = await supabase.auth.getUser();
   const email = data.user?.email?.toLowerCase();

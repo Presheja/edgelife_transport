@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   description:
     'Private-pay wheelchair van and ambulatory transportation in Taunton and Southeastern Massachusetts. Published rates, screened drivers, accessible vans. Get an instant estimate.',
   openGraph: { type: 'website', siteName: 'EdgeLIFE Transportation', locale: 'en_US' },
+  icons: { icon: '/img/logo-mark.png' },
   robots: { index: true, follow: true },
 };
 

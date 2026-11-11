@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
-import { quote, DEFAULT_RATES } from '@/lib/rates';
+import { quote, normalizeRates } from '@/lib/rates';
 import { money } from '@/lib/format';
 import { saveRates, resetRates } from '../actions';
 
@@ -12,7 +12,7 @@ export default async function RatesPage({ searchParams }: { searchParams: Promis
   const { saved, error } = await searchParams;
   // read straight from the database so the admin always sees what is live, not the 60s public cache
   const row = await serviceDb()!.from('settings').select('value').eq('key', 'rates').maybeSingle();
-  const r = { ...DEFAULT_RATES, ...(row.data?.value || {}) };
+  const r = normalizeRates(row.data?.value);
   const L = (k: 'ambulatory' | 'wheelchair', name: string) => (
     <div className="adm-card">
       <h2>{name}</h2>

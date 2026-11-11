@@ -29,6 +29,20 @@ export const DEFAULT_RATES: Rates = {
   note: 'Trips beyond our core service area, including Boston and Providence, are quoted individually before you book.',
 };
 
+/** Incomplete saved settings must not turn a public estimate into NaN. */
+export function normalizeRates(value: unknown): Rates {
+  const saved = value && typeof value === 'object' ? value as Partial<Rates> : {};
+  const level = (id: LevelId): LevelRate => {
+    const source = saved[id];
+    const number = (key: keyof LevelRate) => {
+      const v = source?.[key];
+      return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : DEFAULT_RATES[id][key];
+    };
+    return { base: number('base'), includedMiles: number('includedMiles'), perMile: number('perMile') };
+  };
+  return { ambulatory: level('ambulatory'), wheelchair: level('wheelchair'), note: typeof saved.note === 'string' ? saved.note : DEFAULT_RATES.note };
+}
+
 export interface Level extends LevelRate {
   id: LevelId;
   name: string;

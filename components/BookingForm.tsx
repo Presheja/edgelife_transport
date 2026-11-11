@@ -1,6 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { telHref } from '@/lib/format';
+import { validEmail, validPhone } from '@/lib/validate';
+
+export interface BookingInitial {
+  mobility?: string;
+  tripType?: string;
+  pickup?: string;
+  notes?: string;
+}
 
 const empty = {
   riderName: '', riderPhone: '', mobility: 'ambulatory', dementia: false,
@@ -8,23 +16,43 @@ const empty = {
   contactName: '', relationship: 'I am the rider', email: '', payment: 'Private pay', notes: '',
 };
 
-export default function BookingForm({ phone, responseTime }: { phone: string; responseTime: string }) {
+export default function BookingForm({ phone, responseTime, initial }: { phone: string; responseTime: string; initial?: BookingInitial }) {
   const [step, setStep] = useState(1);
-  const [f, setF] = useState(empty);
+  const [f, setF] = useState(() => ({ ...empty, ...initial }));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const set = (k: keyof typeof empty, v: any) => setF(p => ({ ...p, [k]: v }));
+  const set = <K extends keyof typeof empty>(k: K, v: (typeof empty)[K]) => setF(p => ({ ...p, [k]: v }));
 
   const go = (n: number) => { setStep(n); document.getElementById('book')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
+  function continueFrom(n: number) {
+    setErr('');
+    if (n === 1 && (!f.riderName.trim() || !validPhone(f.riderPhone))) {
+      setErr('Please enter the rider’s name and a valid phone number, including the area code.');
+      return;
+    }
+    if (n === 2 && (!f.pickup.trim() || !f.dropoff.trim() || !f.date || !f.time)) {
+      setErr('Please enter the pickup and destination addresses, ride date, and appointment time.');
+      return;
+    }
+    go(n + 1);
+  }
+
   async function submit() {
-    if (!f.riderName.trim() || !f.riderPhone.trim()) { setErr('We need a name and a phone number to call you back.'); setStep(1); return; }
+    if (busy) return;
+    if (!f.riderName.trim() || !validPhone(f.riderPhone)) { setErr('We need a name and a valid phone number to call you back.'); go(1); return; }
+    if (!f.pickup.trim() || !f.dropoff.trim() || !f.date || !f.time) { setErr('Please complete the pickup and destination addresses, date, and appointment time.'); go(2); return; }
+    if (!validEmail(f.email.trim())) { setErr('Please enter a valid email address or leave it blank.'); return; }
     setBusy(true); setErr('');
     try {
       const r = await fetch('/api/booking', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f),
       });
-      if (!r.ok) throw new Error('Request failed');
+      const result = await r.json();
+      if (!r.ok || !result.ok) {
+        setErr(result.error || 'We could not save your ride request. Please call ' + phone + '.');
+        return;
+      }
       go(4);
     } catch {
       setErr('Something went wrong on our end. Please call ' + phone + ' and we will take the booking by phone.');
@@ -35,7 +63,7 @@ export default function BookingForm({ phone, responseTime }: { phone: string; re
     <div className="book-form">
       <div className="progress">{[1, 2, 3].map(i => <div key={i} className={`pstep${step >= i ? ' on' : ''}`} />)}</div>
 
-      {err && <div className="alert" style={{ marginBottom: 24 }}>
+      {err && <div className="alert" role="alert" style={{ marginBottom: 24 }}>
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flex: '0 0 auto', marginTop: 2 }}><circle cx="10" cy="10" r="8.2" stroke="#AF3123" strokeWidth="1.5" /><path d="M10 6v5M10 13.5h.01" stroke="#AF3123" strokeWidth="1.8" strokeLinecap="round" /></svg>
         <div>{err}</div></div>}
 
@@ -65,7 +93,7 @@ export default function BookingForm({ phone, responseTime }: { phone: string; re
             Rider has memory loss or dementia &mdash; please assign a consistent driver
           </label></div>
         </div>
-        <div className="fnav"><button type="button" className="btn btn-primary" onClick={() => go(2)}>Continue</button><span className="stepnum">Step 1 of 3</span></div>
+        <div className="fnav"><button type="button" className="btn btn-primary" onClick={() => continueFrom(1)}>Continue</button><span className="stepnum">Step 1 of 3</span></div>
       </div>
 
       <div className={`fstep${step === 2 ? ' on' : ''}`}>
@@ -91,7 +119,7 @@ export default function BookingForm({ phone, responseTime }: { phone: string; re
             </div></div>
         </div>
         <div className="fnav"><button type="button" className="btn btn-outline" onClick={() => go(1)}>Back</button>
-          <button type="button" className="btn btn-primary" onClick={() => go(3)}>Continue</button><span className="stepnum">Step 2 of 3</span></div>
+          <button type="button" className="btn btn-primary" onClick={() => continueFrom(2)}>Continue</button><span className="stepnum">Step 2 of 3</span></div>
       </div>
 
       <div className={`fstep${step === 3 ? ' on' : ''}`}>

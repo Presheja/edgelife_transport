@@ -4,12 +4,13 @@ import { useMemo, useState } from 'react';
 import { buildLevels, DESTINATIONS, quote, type Rates, type LevelId } from '@/lib/rates';
 import { money } from '@/lib/format';
 
-export default function QuoteCalculator({ rates }: { rates: Rates }) {
+export default function QuoteCalculator({ rates, towns = [] }: { rates: Rates; towns?: string[] }) {
   const levels = useMemo(() => buildLevels(rates), [rates]);
   const [level, setLevel] = useState<LevelId>('wheelchair');
   const [dest, setDest] = useState(DESTINATIONS[1].id);
   const [miles, setMiles] = useState<number>(DESTINATIONS[1].miles);
   const [roundTrip, setRoundTrip] = useState(true);
+  const [pickupTown, setPickupTown] = useState(towns[0] || 'Taunton');
 
   const q = useMemo(() => quote(rates, { level, miles, roundTrip }), [rates, level, miles, roundTrip]);
   const levelName = levels.find(l => l.id === level)!.name.toLowerCase();
@@ -25,6 +26,12 @@ export default function QuoteCalculator({ rates }: { rates: Rates }) {
       </div>
       <div className="quote-body">
         <div className="quote-form">
+          <div className="field full">
+            <label htmlFor="q-pickup">Pickup town</label>
+            <input id="q-pickup" list="pickup-towns" value={pickupTown} onChange={e => setPickupTown(e.target.value)} />
+            <datalist id="pickup-towns">{towns.map(town => <option key={town} value={town} />)}</datalist>
+            <small>Destination mileage below is approximate from Taunton. Enter your actual one-way mileage for other pickup towns.</small>
+          </div>
           <div className="field full">
             <label>Who is riding?</label>
             <div className="seg">
@@ -48,7 +55,7 @@ export default function QuoteCalculator({ rates }: { rates: Rates }) {
           <div className="field">
             <label htmlFor="q-miles">Miles, one way (change if you know it)</label>
             <input id="q-miles" type="number" min={0} max={200} step={1} value={miles}
-              onChange={e => setMiles(Math.max(0, Number(e.target.value) || 0))} />
+              onChange={e => setMiles(Math.min(200, Math.max(0, Number(e.target.value) || 0)))} />
           </div>
           <div className="field full">
             <label htmlFor="q-trip">Trip type</label>
@@ -68,7 +75,7 @@ export default function QuoteCalculator({ rates }: { rates: Rates }) {
             ))}
             <div className="bd-row tot"><span>Estimated total</span><b>{money(q.total)}</b></div>
           </div>
-          <Link href="/book" className="btn btn-primary">Request this ride</Link>
+          <Link href={{ pathname: '/book', query: { mobility: level, miles, tripType: roundTrip ? 'round' : 'one', pickup: pickupTown, destination: DESTINATIONS.find(d => d.id === dest)!.label } }} className="btn btn-primary">Request this ride</Link>
           <p className="disclaim">Estimate only. Dispatch confirms the final price before your ride is booked, and long waits are quoted separately.</p>
         </div>
       </div>

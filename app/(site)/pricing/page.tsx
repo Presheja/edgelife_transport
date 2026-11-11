@@ -3,7 +3,7 @@ import Link from 'next/link';
 import PageHead from '@/components/PageHead';
 import QuoteCalculator from '@/components/QuoteCalculator';
 import { Icon } from '@/components/Icons';
-import { buildLevels } from '@/lib/rates';
+import { buildLevels, quote } from '@/lib/rates';
 import { money } from '@/lib/format';
 import { getCompany, getRates } from '@/lib/settings';
 
@@ -43,7 +43,7 @@ export default async function Pricing() {
               <p style={{ fontSize: '.94rem', marginTop: 12 }}>
                 The base covers the first {wc.includedMiles} miles with the rider in the vehicle. After that, each extra mile is
                 {' '}{money(wc.perMile)} for wheelchair rides and {money(amb.perMile)} for ambulatory rides. A 12-mile wheelchair
-                ride is {money(wc.base + 7 * wc.perMile)}. A 12-mile ambulatory ride is {money(amb.base + 7 * amb.perMile)}.
+                ride is {money(quote(rates, { level: 'wheelchair', miles: 12, roundTrip: false }).total)}. A 12-mile ambulatory ride is {money(quote(rates, { level: 'ambulatory', miles: 12, roundTrip: false }).total)}.
               </p>
               {rates.note && <p style={{ fontSize: '.94rem', marginTop: 12 }}>{rates.note}</p>}
             </div>
@@ -70,7 +70,7 @@ export default async function Pricing() {
       <section className="tint">
         <div className="wrap">
           <div className="sec-head ctr reveal"><div className="eyebrow ctr">Try it</div><h2>Price your own trip.</h2></div>
-          <div className="reveal"><QuoteCalculator rates={rates} /></div>
+          <div className="reveal"><QuoteCalculator rates={rates} towns={company.coreTowns} /></div>
         </div>
       </section>
 

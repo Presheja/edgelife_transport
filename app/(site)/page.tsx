@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import QuoteCalculator from '@/components/QuoteCalculator';
+import BookingSection from '@/components/BookingSection';
 import { Icon, Tick } from '@/components/Icons';
 import { SERVICES, FLEET, AREAS, CREDENTIALS, DRIVER_STANDARDS, VEHICLE_STANDARDS } from '@/lib/content';
 import { getCompany, getRates, getTestimonials } from '@/lib/settings';
@@ -11,7 +12,7 @@ export default async function Home() {
   return (
     <>
       <div className="hero">
-        <div className="hero-bg"><img src="/img/fleet.jpg" alt="EdgeLIFE wheelchair-accessible fleet" /></div>
+        <div className="hero-bg"><img src="/img/fleet-accessible.png" alt="EdgeLIFE wheelchair-accessible fleet with ramps deployed" /></div>
         <div className="hero-grain" />
         <div className="wrap">
           <div className="eyebrow on-dark">Wheelchair &amp; Medical Transportation · Taunton &amp; Southeastern Massachusetts</div>
@@ -38,7 +39,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <div className="wrap quote-zone"><QuoteCalculator rates={rates} /></div>
+      <div className="wrap quote-zone"><QuoteCalculator rates={rates} towns={company.coreTowns} /></div>
 
       <div className="creds">
         <div className="wrap">
@@ -215,6 +216,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      <BookingSection company={company} />
     </>
   );
 }

@@ -4,7 +4,7 @@
    or cannot be reached, so the public site always renders. */
 import { unstable_cache } from 'next/cache';
 import { serviceDb } from '@/lib/supabase/admin';
-import { DEFAULT_RATES, type Rates } from '@/lib/rates';
+import { DEFAULT_RATES, normalizeRates, type Rates } from '@/lib/rates';
 
 export interface Company {
   name: string;
@@ -71,7 +71,7 @@ export const getCompany = unstable_cache(
 );
 
 export const getRates = unstable_cache(
-  async (): Promise<Rates> => readSetting<Rates>('rates', DEFAULT_RATES),
+  async (): Promise<Rates> => normalizeRates(await readSetting<Rates>('rates', DEFAULT_RATES)),
   ['rate-settings'],
   { revalidate: 60, tags: ['settings'] },
 );
