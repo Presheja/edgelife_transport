@@ -12,7 +12,7 @@ import { DEFAULT_COMPANY } from '@/lib/settings';
 import { DEFAULT_RATES } from '@/lib/rates';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, LOG_KINDS } from '@/lib/vehicles';
 import { FEEDBACK_STATUSES, creditName, creditRole } from '@/lib/feedback';
-import { ORG_TYPES, SOURCE_STATUSES, TOUCH_KINDS, DECLINE_REASONS, PRE_ACTIVATION, suggestedFollowUp, todayET, addDays } from '@/lib/referrals';
+import { ORG_TYPES, SOURCE_STATUSES, TOUCH_KINDS, DECLINE_REASONS, PRE_ACTIVATION, GAP_ANSWERS, GAP_QUESTION, suggestedFollowUp, todayET, addDays } from '@/lib/referrals';
 
 function db() {
   const c = serviceDb();
@@ -538,6 +538,24 @@ export async function logTouch(fd: FormData) {
   if (Object.keys(patch).length) await db().from('referral_sources').update(patch).eq('id', sourceId);
   revalidatePath('/admin', 'layout');
   redirect(`/admin/referrals/${sourceId}?saved=touch#touch`);
+}
+
+/* Records the answer to the GATRA-gap discovery question, and logs it in the history. */
+export async function saveGapAnswer(fd: FormData) {
+  const admin = await requireAdmin();
+  const sourceId = str(fd.get('source_id'), 60);
+  if (!UUID.test(sourceId)) redirect('/admin/referrals');
+  const answer = ok(GAP_ANSWERS, str(fd.get('gap_answer'), 20), '');
+  const notes = str(fd.get('gap_notes'), 2000) || null;
+  const { error } = await db().from('referral_sources').update({ gap_answer: answer || null, gap_notes: notes }).eq('id', sourceId);
+  if (error) redirect(`/admin/referrals/${sourceId}?error=save#gap`);
+  if (answer) {
+    const label = GAP_ANSWERS.find(a => a.id === answer)!.label;
+    await db().from('referral_touches').insert({ source_id: sourceId, kind: 'note', created_by: admin.email,
+      outcome: `Discovery question: "${GAP_QUESTION}"\nAnswer: ${label}${notes ? `\n${notes}` : ''}` });
+  }
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/referrals/${sourceId}?saved=gap#gap`);
 }
 
 export async function deleteTouch(fd: FormData) {

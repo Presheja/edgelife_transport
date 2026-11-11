@@ -2,15 +2,15 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { fmtDate, label } from '@/lib/admin-constants';
-import { ORG_TYPES, SOURCE_STATUSES, todayET, type ReferralSource } from '@/lib/referrals';
+import { GAP_ANSWERS, GAP_CAMPAIGN, GAP_QUESTION, GAP_THRESHOLD, ORG_TYPES, SOURCE_STATUSES, todayET, type ReferralSource } from '@/lib/referrals';
 import { statsBySource, emptyStats, money } from '@/lib/referral-stats';
 import GrowthTabs from '@/components/admin/GrowthTabs';
 
 export const metadata = { title: 'Referral network' };
 
-export default async function Referrals({ searchParams }: { searchParams: Promise<{ status?: string; tier?: string; due?: string; saved?: string }> }) {
+export default async function Referrals({ searchParams }: { searchParams: Promise<{ status?: string; tier?: string; due?: string; saved?: string; campaign?: string }> }) {
   await requireAdmin();
-  const { status, tier, due } = await searchParams;
+  const { status, tier, due, campaign } = await searchParams;
   const db = serviceDb()!;
   const today = todayET();
   const month = today.slice(0, 7);
@@ -20,9 +20,10 @@ export default async function Referrals({ searchParams }: { searchParams: Promis
   else if (!due) q = q.neq('status', 'closed');
   if (tier === '1' || tier === '2') q = q.eq('tier', Number(tier));
   if (due) q = q.lte('next_follow_up', today).neq('status', 'closed');
+  if (campaign === GAP_CAMPAIGN) q = q.eq('campaign', GAP_CAMPAIGN);
   const [{ data }, { data: all }, stats, { data: monthRides }] = await Promise.all([
     q,
-    db.from('referral_sources').select('status, next_follow_up'),
+    db.from('referral_sources').select('status, next_follow_up, campaign, gap_answer'),
     statsBySource(),
     db.from('bookings').select('status, quoted_price, created_at, ride_date').not('referral_source_id', 'is', null).gte('created_at', month + '-01'),
   ]);
@@ -31,6 +32,9 @@ export default async function Referrals({ searchParams }: { searchParams: Promis
   for (const r of all || []) counts.set(r.status as string, (counts.get(r.status as string) ?? 0) + 1);
   const dueCount = (all || []).filter(r => r.next_follow_up && (r.next_follow_up as string) <= today && r.status !== 'closed').length;
 
+  const gap = (all || []).filter(r => r.campaign === GAP_CAMPAIGN);
+  const asked = gap.filter(r => r.gap_answer).length;
+  const noAnswer = gap.filter(r => r.gap_answer === 'no_good_answer').length;
   const m = monthRides || [];
   const requests = m.length;
   const completed = m.filter(b => b.status === 'completed').length;
@@ -44,6 +48,21 @@ export default async function Referrals({ searchParams }: { searchParams: Promis
       <p className="sub">The referral network: facilities and professionals who send riders our way. Make EdgeLIFE easy to remember, easy to contact, and reliable enough to call again.</p>
       <GrowthTabs active="referrals" />
 
+      {gap.length > 0 && (
+        <Link href={`/admin/referrals?campaign=${GAP_CAMPAIGN}`} className={`adm-card gap-banner${noAnswer >= GAP_THRESHOLD ? ' proven' : ''}`}>
+          <div>
+            <span className="eyebrow-sm">GATRA-gap discovery calls</span>
+            <p>&ldquo;{GAP_QUESTION}&rdquo;</p>
+          </div>
+          <div className="gap-score">
+            <b>{noAnswer}<small> / {GAP_THRESHOLD}</small></b>
+            <span>{noAnswer >= GAP_THRESHOLD
+              ? 'The gap is real. The business is real.'
+              : `said "no good answer" · ${asked} of ${gap.length} asked · ${Math.max(0, GAP_THRESHOLD - noAnswer)} more to prove it`}</span>
+          </div>
+        </Link>
+      )}
+
       <div className="adm-grid">
         <div className="stat"><b>{completed}</b><span>Referred rides completed this month</span><small>The number that matters most</small></div>
         <div className="stat"><b>{requests}</b><span>Referral requests this month</span><small>{conversion != null ? `${conversion}% became scheduled rides` : 'No requests yet'}</small></div>
@@ -52,8 +71,9 @@ export default async function Referrals({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="filters">
-        <Link href="/admin/referrals" className={!status && !due && !tier ? 'on' : ''}>Open pipeline</Link>
+        <Link href="/admin/referrals" className={!status && !due && !tier && !campaign ? 'on' : ''}>Open pipeline</Link>
         <Link href="/admin/referrals?due=1" className={due ? 'on' : ''}>Due today</Link>
+        {gap.length > 0 && <Link href={`/admin/referrals?campaign=${GAP_CAMPAIGN}`} className={campaign ? 'on' : ''}>GATRA-gap calls {asked}/{gap.length}</Link>}
         {SOURCE_STATUSES.map(s => (
           <Link key={s.id} href={`/admin/referrals?status=${s.id}`} className={status === s.id ? 'on' : ''} title={s.hint}>{s.label} {counts.get(s.id) ?? 0}</Link>
         ))}
@@ -71,7 +91,8 @@ export default async function Referrals({ searchParams }: { searchParams: Promis
                 <tr key={s.id}>
                   <td><Link className="row" href={`/admin/referrals/${s.id}`}>{s.organization}</Link><small>{label(ORG_TYPES, s.org_type)} · Tier {s.tier}{s.area ? ` · ${s.area}` : ''}</small></td>
                   <td>{s.contact_name || <small>Not identified yet</small>}<small>{[s.contact_role, s.phone].filter(Boolean).join(' · ')}</small></td>
-                  <td><span className={`pill ref-${s.status}`}>{label(SOURCE_STATUSES, s.status)}</span>{s.info_sent ? <small>Info sent</small> : null}</td>
+                  <td><span className={`pill ref-${s.status}`}>{label(SOURCE_STATUSES, s.status)}</span>{s.info_sent ? <small>Info sent</small> : null}
+                    {s.gap_answer && <small className={`gap-tag ${s.gap_answer}`}>{label(GAP_ANSWERS, s.gap_answer)}</small>}</td>
                   <td>{s.last_contact ? fmtDate(s.last_contact) : <small>Never</small>}</td>
                   <td>{s.next_follow_up ? <span className={overdue ? 'pill bad' : isToday ? 'pill warn' : ''}>{overdue ? 'Overdue · ' : isToday ? 'Today' : ''}{isToday ? '' : fmtDate(s.next_follow_up)}</span> : <small>None set</small>}</td>
                   <td>{st.referrals || ''}</td>

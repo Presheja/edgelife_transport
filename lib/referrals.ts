@@ -8,6 +8,7 @@ export const ORG_TYPES = [
   { id: 'rehab',           label: 'Rehabilitation facility',      tier: 1 },
   { id: 'snf',             label: 'Skilled nursing facility',     tier: 1 },
   { id: 'home_health',     label: 'Home health agency',           tier: 2 },
+  { id: 'home_care',       label: 'Home care agency',             tier: 2 },
   { id: 'primary_care',    label: 'Primary care practice',        tier: 2 },
   { id: 'specialty',       label: 'Specialty medical practice',   tier: 2 },
   { id: 'behavioral',      label: 'Behavioral health facility',   tier: 2 },
@@ -56,6 +57,7 @@ export interface ReferralSource {
   contact_name: string | null; contact_role: string | null; phone: string | null; email: string | null;
   preferred_contact: string | null; status: string; info_sent: boolean; first_contacted: string | null;
   last_contact: string | null; next_follow_up: string | null; notes: string | null;
+  campaign: string | null; gap_answer: string | null; gap_notes: string | null;
 }
 
 export interface ReferralTouch {
@@ -74,6 +76,17 @@ export function suggestedFollowUp(priorTouches: number, from = todayET()) {
   if (priorTouches === 1) return addDays(from, 10);
   return addDays(from, 30);
 }
+
+/* The GATRA-gap discovery calls: one question, asked of a fixed set of organizations,
+   to test whether the business is real before scaling outreach. */
+export const GAP_CAMPAIGN = 'gatra_gap';
+export const GAP_QUESTION = 'When a family here needs a ride that GATRA won\u2019t cover, what do you currently tell them?';
+export const GAP_THRESHOLD = 4;
+export const GAP_ANSWERS = [
+  { id: 'no_good_answer', label: 'No good answer', hint: 'They have nothing reliable to offer. This is the gap.' },
+  { id: 'has_answer',     label: 'They have an answer', hint: 'They already send families somewhere that works.' },
+  { id: 'unclear',        label: 'Unclear / partial', hint: 'Something exists, but it is patchy or they hesitated.' },
+] as const;
 
 /** Statuses that ride activity can move a source past. */
 export const PRE_ACTIVATION = ['prospect', 'contacted', 'qualified', 'dormant'];

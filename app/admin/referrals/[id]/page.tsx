@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { BOOKING_STATUSES, fmtDate, fmtStamp, label, type Booking } from '@/lib/admin-constants';
-import { DECLINE_REASONS, ORG_TYPES, SOURCE_STATUSES, TOUCH_KINDS, suggestedFollowUp, todayET, type ReferralSource, type ReferralTouch } from '@/lib/referrals';
+import { DECLINE_REASONS, GAP_ANSWERS, GAP_CAMPAIGN, GAP_QUESTION, ORG_TYPES, SOURCE_STATUSES, TOUCH_KINDS, suggestedFollowUp, todayET, type ReferralSource, type ReferralTouch } from '@/lib/referrals';
 import { statsBySource, emptyStats, money } from '@/lib/referral-stats';
 import AdminSourceFields from '@/components/admin/SourceForm';
-import { updateSource, deleteSource, logTouch, deleteTouch } from '../../actions';
+import { updateSource, deleteSource, logTouch, deleteTouch, saveGapAnswer } from '../../actions';
 import { telHref } from '@/lib/format';
 
 export const metadata = { title: 'Referral source' };
@@ -49,11 +49,31 @@ export default async function SourceDetail({ params, searchParams }: {
       {saved === '1' && <div className="flash good">Saved.</div>}
       {saved === 'touch' && <div className="flash good">Logged.</div>}
       {saved === 'removed' && <div className="flash good">Entry removed.</div>}
+      {saved === 'gap' && <div className="flash good">Answer saved and added to the history.</div>}
       {error && <div className="flash bad">{error === 'required' ? 'The organization name is required.' : error === 'confirm' ? 'Tick the box to confirm.' : 'Could not save. Try again.'}</div>}
       {s.next_follow_up && s.next_follow_up <= today && s.status !== 'closed' && (
         <div className={`flash ${overdue ? 'bad' : 'warn'}`}>Follow-up {overdue ? `was due ${fmtDate(s.next_follow_up)}` : 'due today'}.{s.preferred_contact ? ` They prefer: ${s.preferred_contact}.` : ''}</div>
       )}
       {!s.contact_name && <div className="flash warn">No referral contact yet. The SOP is clear: the goal is a specific person who arranges rides, not the front desk.</div>}
+
+      {(s.campaign === GAP_CAMPAIGN || s.gap_answer) && (
+        <form action={saveGapAnswer} className="adm-card gap-card" id="gap">
+          <input type="hidden" name="source_id" value={s.id} />
+          <div className="gap-q"><span className="eyebrow-sm">The question</span><p>&ldquo;{GAP_QUESTION}&rdquo;</p></div>
+          <div className="gap-opts" role="radiogroup" aria-label="Their answer">
+            {GAP_ANSWERS.map(a => (
+              <label key={a.id} className={`gap-opt ${a.id}`}>
+                <input type="radio" name="gap_answer" value={a.id} defaultChecked={s.gap_answer === a.id} />
+                <span><b>{a.label}</b><small>{a.hint}</small></span>
+              </label>
+            ))}
+          </div>
+          <div className="fld" style={{ marginTop: 14 }}><label htmlFor="gap_notes">What they tell families today, in their words</label>
+            <textarea id="gap_notes" name="gap_notes" defaultValue={s.gap_notes ?? ''} placeholder="We give them the GATRA number and hope for the best. Sometimes the family drives..." /></div>
+          <div className="row-btn" style={{ marginTop: 14 }}><button className="abtn pri" type="submit">Save answer</button>
+            <small className="sub" style={{ margin: 0 }}>Also log the call itself below so the follow-up date moves.</small></div>
+        </form>
+      )}
 
       <div className="adm-grid">
         <div className="stat"><b>{st.referrals}</b><span>Ride requests sent</span><small>{st.firstReferral ? `First ${fmtDate(st.firstReferral)}` : 'None yet'}</small></div>

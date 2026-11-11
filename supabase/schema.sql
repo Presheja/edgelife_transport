@@ -233,3 +233,8 @@ alter table feedback          enable row level security;
 alter table referral_sources  enable row level security;
 alter table referral_touches  enable row level security;
 grant select, insert, update, delete on table feedback, referral_sources, referral_touches to service_role;
+
+-- GATRA-gap discovery fields (data load lives in gatra-gap-calls.sql)
+alter table referral_sources add column if not exists campaign text;
+alter table referral_sources add column if not exists gap_answer text;
+alter table referral_sources add column if not exists gap_notes text;
