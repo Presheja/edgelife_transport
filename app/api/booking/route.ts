@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       await sendToCustomer(email, 'We received your ride request',
 `Hi ${who.split(' ')[0]},
 
-Thank you for choosing EdgeLIFE Transportation. We have your request for ${riderName}${row.ride_date ? ` on ${fmtDate(row.ride_date)}` : ''}${row.ride_time ? ` at ${fmtTime(row.ride_time)}` : ''}.
+Thank you for choosing EdgeLIFE Transport. We have your request for ${riderName}${row.ride_date ? ` on ${fmtDate(row.ride_date)}` : ''}${row.ride_time ? ` at ${fmtTime(row.ride_time)}` : ''}.
 
 Your ride is not booked yet. Dispatch will call or text you with a firm price, usually the same business day. No card is needed until then.
 
@@ -89,7 +89,7 @@ Destination: ${row.dropoff}
 
 If anything changes, or the ride is urgent, call us at ${company.phone}.
 
-EdgeLIFE Transportation
+EdgeLIFE Transport
 ${company.phone}`);
     }
     return NextResponse.json({ ok: true });

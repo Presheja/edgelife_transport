@@ -148,22 +148,51 @@ export const FLEET: Vehicle[] = [
   },
 ];
 
-export interface Area { slug: string; town: string; note: string; county: string }
+export interface Area {
+  slug: string; town: string; note: string; county: string;
+  /** Rough one-way driving distance from the Taunton garage. Used for a sample fare, labelled "about". */
+  miles: number;
+  /** Where riders from this town most often need to go. Real, named places only. */
+  destinations: string[];
+  /** One sentence only true of this town. */
+  local: string;
+}
 
 /* Ten featured town pages, kept deliberately small. A page per town for
    seventy towns would be thin, near-duplicate content that search engines
-   penalize. The full list of towns we serve is managed in the admin area. */
+   penalize. Each page carries facts specific to that town so none of them
+   is a copy of another. The full list of towns we serve is managed in admin. */
 export const AREAS: Area[] = [
-  { slug: 'taunton',       town: 'Taunton',       county: 'Bristol',  note: 'Our home base · Morton Hospital' },
-  { slug: 'raynham',       town: 'Raynham',       county: 'Bristol',  note: 'Assisted living and home care agencies' },
-  { slug: 'easton',        town: 'Easton',        county: 'Bristol',  note: 'North Easton and senior living communities' },
-  { slug: 'norton',        town: 'Norton',        county: 'Bristol',  note: 'Senior living communities and local medical offices' },
-  { slug: 'mansfield',     town: 'Mansfield',     county: 'Bristol',  note: 'Senior living and medical offices' },
-  { slug: 'attleboro',     town: 'Attleboro',     county: 'Bristol',  note: 'Sturdy Memorial Hospital' },
-  { slug: 'lakeville',     town: 'Lakeville',     county: 'Plymouth', note: 'Residential and senior living' },
-  { slug: 'middleborough', town: 'Middleborough', county: 'Plymouth', note: 'Medical offices and senior housing' },
-  { slug: 'bridgewater',   town: 'Bridgewater',   county: 'Plymouth', note: 'Medical offices and senior housing' },
-  { slug: 'brockton',      town: 'Brockton',      county: 'Plymouth', note: 'Brockton Hospital · Good Samaritan Medical Center' },
+  { slug: 'taunton', town: 'Taunton', county: 'Bristol', note: 'Our home base · Morton Hospital', miles: 3,
+    destinations: ['Morton Hospital', 'Dialysis and outpatient centers in Taunton', 'Taunton adult day health programs'],
+    local: 'Our vans are garaged right here in Taunton, so a pickup across the city is the shortest and most dependable trip we run.' },
+  { slug: 'raynham', town: 'Raynham', county: 'Bristol', note: 'Assisted living and home care agencies', miles: 5,
+    destinations: ['Morton Hospital in Taunton', 'Medical offices along Route 138', 'Assisted living residences in Raynham'],
+    local: 'Raynham borders Taunton, so most Raynham pickups are only a few minutes from where our vans start the day.' },
+  { slug: 'easton', town: 'Easton', county: 'Bristol', note: 'North Easton and senior living communities', miles: 11,
+    destinations: ['Good Samaritan Medical Center in Brockton', 'Morton Hospital in Taunton', 'Senior living communities in North Easton'],
+    local: 'We pick up across North Easton, South Easton and Easton Center, including the senior living communities near Five Corners.' },
+  { slug: 'norton', town: 'Norton', county: 'Bristol', note: 'Senior living communities and local medical offices', miles: 9,
+    destinations: ['Sturdy Memorial Hospital in Attleboro', 'Morton Hospital in Taunton', 'Senior living communities on Mansfield Avenue'],
+    local: 'Norton sits between Taunton and Attleboro, which puts both Morton Hospital and Sturdy Memorial within an easy ride.' },
+  { slug: 'mansfield', town: 'Mansfield', county: 'Bristol', note: 'Senior living and medical offices', miles: 14,
+    destinations: ['Sturdy Memorial Hospital in Attleboro', 'Medical offices in Mansfield', 'Senior living communities in Mansfield'],
+    local: 'Mansfield riders most often head to Attleboro or Taunton for care, and we plan the route around the I-495 traffic.' },
+  { slug: 'attleboro', town: 'Attleboro', county: 'Bristol', note: 'Sturdy Memorial Hospital', miles: 15,
+    destinations: ['Sturdy Memorial Hospital', 'Dialysis and outpatient centers in Attleboro', 'Providence hospitals by arrangement'],
+    local: 'Attleboro is home to Sturdy Memorial Hospital, and it is also our jumping-off point for appointments in Providence.' },
+  { slug: 'lakeville', town: 'Lakeville', county: 'Plymouth', note: 'Residential and senior living', miles: 11,
+    destinations: ['Morton Hospital in Taunton', 'Medical offices in Middleborough', 'Hospitals in New Bedford by arrangement'],
+    local: 'Lakeville homes are spread out along the lakes and back roads, so we confirm the pickup door and driveway when you book.' },
+  { slug: 'middleborough', town: 'Middleborough', county: 'Plymouth', note: 'Medical offices and senior housing', miles: 12,
+    destinations: ['Morton Hospital in Taunton', 'Brockton Hospital', 'Medical offices in Middleborough Center'],
+    local: 'Middleborough is one of the largest towns by area in the state, so we quote from the actual pickup address, not the town center.' },
+  { slug: 'bridgewater', town: 'Bridgewater', county: 'Plymouth', note: 'Medical offices and senior housing', miles: 13,
+    destinations: ['Brockton Hospital', 'Good Samaritan Medical Center in Brockton', 'Medical offices in Bridgewater'],
+    local: 'Most Bridgewater riders are headed north to the Brockton hospitals, a short run up Route 24 or Route 28.' },
+  { slug: 'brockton', town: 'Brockton', county: 'Plymouth', note: 'Brockton Hospital · Good Samaritan Medical Center', miles: 16,
+    destinations: ['Brockton Hospital', 'Good Samaritan Medical Center', 'Dialysis and outpatient centers in Brockton'],
+    local: 'Brockton has two hospitals, Brockton Hospital and Good Samaritan Medical Center, and we drive to both every week.' },
 ];
 
 /* --------------------------------------------------------------------------

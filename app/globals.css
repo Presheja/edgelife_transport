@@ -376,3 +376,4 @@ footer{background:var(--navy-900);color:rgba(255,255,255,.62);padding:86px 0 0;f
 .quote-sm p{color:rgba(255,255,255,.86);font-size:1rem;line-height:1.6}
 .quote-sm cite{display:block;margin-top:14px;font-style:normal;font-size:.86rem;color:rgba(255,255,255,.62)}
 .quote-sm cite b{color:#fff;display:block}
+.book-side h1{font-size:2.1rem;margin-bottom:16px}

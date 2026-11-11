@@ -6,7 +6,8 @@ import { FLEET, VEHICLE_STANDARDS } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Our Fleet',
-  description: 'Photographs of the actual EdgeLIFE wheelchair-accessible vans, garaged in Taunton, MA.',
+  description: 'See the actual wheelchair-accessible vans EdgeLIFE Transport drives in Taunton and Southeastern Massachusetts. Real photos of our fleet, not stock.',
+  alternates: { canonical: '/fleet' },
 };
 
 export default function Fleet() {

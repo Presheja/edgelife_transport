@@ -1,7 +1,7 @@
 import PageHead from '@/components/PageHead';
 import { getCompany } from '@/lib/settings';
 
-export const metadata = { title: 'Accessibility Statement' };
+export const metadata = { title: 'Accessibility Statement', alternates: { canonical: '/accessibility' } };
 
 export default async function Page() {
   const c = await getCompany();

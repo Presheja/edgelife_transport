@@ -3,14 +3,16 @@ import { TickLight } from '@/components/Icons';
 import type { Company } from '@/lib/settings';
 import { telHref } from '@/lib/format';
 
-export default function BookingSection({ company, initial }: { company: Company; initial?: BookingInitial }) {
+/* On /book this is the page's main heading (h1); on the homepage it is a section (h2). */
+export default function BookingSection({ company, initial, asPage = false }: { company: Company; initial?: BookingInitial; asPage?: boolean }) {
+  const Heading = asPage ? 'h1' : 'h2';
   return (
     <section id="book" style={{ background: 'var(--sand)' }}>
       <div className="wrap">
         <div className="book">
           <div className="book-side">
             <div className="eyebrow on-dark">Book a ride</div>
-            <h2>Let&rsquo;s get them where they need to be.</h2>
+            <Heading className="book-title">Let&rsquo;s get them where they need to be.</Heading>
             <p>Fill this out and dispatch will call or text you back with a firm price &mdash; {company.responseTime}.</p>
             <ul className="bside-list">
               {['No card required to request a ride', 'Price confirmed before the ride is booked',

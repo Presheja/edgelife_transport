@@ -7,7 +7,8 @@ import { getCompany } from '@/lib/settings';
 
 export const metadata: Metadata = {
   title: 'Driver Screening & Vehicle Safety Standards',
-  description: 'How EdgeLIFE screens drivers and maintains vehicles: drug testing, CORI and SORI checks, driving records, pre-shift inspections, and a ten-year maximum vehicle age.',
+  description: 'How EdgeLIFE Transport screens drivers and inspects vans: drug testing, CORI and SORI checks, driving records, and a written check before every shift.',
+  alternates: { canonical: '/safety' },
 };
 
 export default async function Safety() {

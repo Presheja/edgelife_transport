@@ -6,6 +6,8 @@ import { SERVICES, FLEET, AREAS, CREDENTIALS, DRIVER_STANDARDS, VEHICLE_STANDARD
 import { getCompany, getRates, getTestimonials } from '@/lib/settings';
 import { telHref } from '@/lib/format';
 
+export const metadata = { alternates: { canonical: '/' } };
+
 export default async function Home() {
   const [company, rates, testimonials] = await Promise.all([getCompany(), getRates(), getTestimonials()]);
   const tel = telHref(company.phone);

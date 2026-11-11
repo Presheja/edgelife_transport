@@ -6,7 +6,8 @@ import { money } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Book a Ride',
-  description: 'Request a wheelchair van or ambulatory ride in Taunton and Southeastern Massachusetts. Dispatch confirms your price before the ride is booked.',
+  description: 'Request a wheelchair van or ambulatory ride in Taunton and Southeastern MA. No card needed. Dispatch confirms your price before anything is booked.',
+  alternates: { canonical: '/book' },
 };
 
 export default async function Book({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -17,7 +18,7 @@ export default async function Book({ searchParams }: { searchParams: Promise<Rec
   const miles = Number(value('miles'));
   const hasEstimate = value('miles') !== '' && Number.isFinite(miles) && miles >= 0 && miles <= 200;
   const estimate = hasEstimate ? quote(rates, { level: mobility, miles, roundTrip: tripType === 'round' }) : null;
-  return <BookingSection company={company} initial={{
+  return <BookingSection asPage company={company} initial={{
     mobility, tripType, pickup: value('pickup'),
     notes: estimate ? `Requested estimate: ${money(estimate.total)}; ${mobility}; ${miles} miles one way; ${tripType === 'round' ? 'round trip' : 'one way'}. Destination area: ${value('destination')}. Dispatch must confirm the final price.` : '',
   }} />;

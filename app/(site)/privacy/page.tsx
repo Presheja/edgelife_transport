@@ -1,7 +1,7 @@
 import PageHead from '@/components/PageHead';
 import { getCompany } from '@/lib/settings';
 
-export const metadata = { title: 'Privacy Notice' };
+export const metadata = { title: 'Privacy Notice', alternates: { canonical: '/privacy' } };
 
 export default async function Page() {
   const c = await getCompany();

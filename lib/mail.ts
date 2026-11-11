@@ -2,6 +2,7 @@
    Every submission is already saved in Supabase before we try to send. */
 import 'server-only';
 import nodemailer from 'nodemailer';
+import { SITE_URL } from '@/lib/site';
 
 function transport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
@@ -16,7 +17,7 @@ export async function notify(subject: string, lines: [string, string][], replyTo
   const to = process.env.NOTIFY_TO;
   if (!t || !to) return;
   try {
-    const text = lines.map(([k, v]) => `${k}: ${v || '-'}`).join('\n') + '\n\nOpen the admin: ' + (process.env.SITE_URL || 'https://edgelifetransport.com') + '/admin';
+    const text = lines.map(([k, v]) => `${k}: ${v || '-'}`).join('\n') + '\n\nOpen the admin: ' + (SITE_URL) + '/admin';
     await t.sendMail({ from: `EdgeLIFE Website <${process.env.SMTP_USER}>`, to, subject, text, ...(replyTo ? { replyTo } : {}) });
   } catch (e) {
     console.error('[EdgeLIFE] email notification failed', e);
@@ -28,7 +29,7 @@ export async function sendToCustomer(to: string, subject: string, text: string) 
   const t = transport();
   if (!t || !to) return;
   try {
-    await t.sendMail({ from: `EdgeLIFE Transportation <${process.env.SMTP_USER}>`, to, subject, text, replyTo: process.env.NOTIFY_TO || process.env.SMTP_USER });
+    await t.sendMail({ from: `EdgeLIFE Transport <${process.env.SMTP_USER}>`, to, subject, text, replyTo: process.env.NOTIFY_TO || process.env.SMTP_USER });
   } catch (e) {
     console.error('[EdgeLIFE] customer email failed', e);
   }

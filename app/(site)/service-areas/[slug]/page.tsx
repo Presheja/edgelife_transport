@@ -6,6 +6,8 @@ import { Icon, Tick } from '@/components/Icons';
 import { AREAS, SERVICES } from '@/lib/content';
 import { money, telHref } from '@/lib/format';
 import { getCompany, getRates } from '@/lib/settings';
+import { quote } from '@/lib/rates';
+import { OG_IMAGE } from '@/lib/site';
 
 export function generateStaticParams() { return AREAS.map(a => ({ slug: a.slug })); }
 
@@ -13,9 +15,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const a = AREAS.find(x => x.slug === slug);
   if (!a) return {};
+  const description = `Wheelchair van and ambulatory rides in ${a.town}, MA, about ${a.miles} miles from our Taunton base. Rides to ${a.destinations[0]} and more. Published rates.`;
   return {
-    title: `Wheelchair & Private-Pay Rides in ${a.town}, MA`,
-    description: `Wheelchair-accessible and ambulatory private-pay transportation in ${a.town}, Massachusetts. Published rates, screened drivers, booked ahead.`,
+    title: `Wheelchair & Medical Rides in ${a.town}, MA`,
+    description: description.length > 160 ? description.slice(0, 157).replace(/\s+\S*$/, '') + '…' : description,
+    alternates: { canonical: `/service-areas/${a.slug}` },
+    openGraph: { url: `/service-areas/${a.slug}`, title: `Wheelchair & Medical Rides in ${a.town}, MA`, images: [OG_IMAGE] },
   };
 }
 
@@ -25,6 +30,7 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
   if (!a) notFound();
   const [company, rates] = await Promise.all([getCompany(), getRates()]);
   const home = a.slug === 'taunton';
+  const sample = quote(rates, { level: 'wheelchair', miles: a.miles, roundTrip: false });
 
   return (
     <>
@@ -36,9 +42,9 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
           <div className="split">
             <div className="prose reveal">
               <p>EdgeLIFE runs regular routes through {a.town}, most often to medical appointments, adult day programs,
-                and the errands, visits and appointments that state-funded rides do not cover. {home
-                  ? `Our vans are garaged right here in Taunton, which is why a ${a.town} pickup is the most reliable we offer.`
-                  : `Our vans are garaged in Taunton, so a ${a.town} pickup is a short drive for us, and that is what keeps it dependable.`}</p>
+                and the errands, visits and appointments that state-funded rides do not cover. {a.local}</p>
+              {!home && <p>{a.town} is about {a.miles} miles from our Taunton garage. As a rough guide, a one-way wheelchair ride
+                of that distance comes to about {money(sample.total)} at our published rates. Dispatch quotes your exact trip before anything is booked.</p>}
               <p>Every trip is priced the same published way: a base fare that includes the first {rates.wheelchair.includedMiles} miles, then
                 a per-mile charge. Wheelchair rides start at {money(rates.wheelchair.base)} plus {money(rates.wheelchair.perMile)} per extra mile.
                 Ambulatory rides start at {money(rates.ambulatory.base)} plus {money(rates.ambulatory.perMile)} per extra mile.
@@ -51,7 +57,11 @@ export default async function AreaPage({ params }: { params: Promise<{ slug: str
               </div>
             </div>
             <div className="card reveal" style={{ alignSelf: 'start' }}>
-              <div className="eyebrow">In {a.town} we most often drive</div>
+              <div className="eyebrow">Where {a.town} riders often go</div>
+              <ul className="checks" style={{ marginTop: 0, marginBottom: 22 }}>
+                {a.destinations.map(d => <li key={d}><Tick /><div><span>{d}</span></div></li>)}
+              </ul>
+              <div className="eyebrow">Rides we run in {a.town}</div>
               <ul className="checks" style={{ marginTop: 0 }}>
                 {SERVICES.slice(0, 4).map(s => (
                   <li key={s.slug}><Tick /><div><Link href={`/services/${s.slug}`} style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{s.title}</Link></div></li>

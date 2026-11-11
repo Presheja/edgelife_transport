@@ -36,7 +36,7 @@ export default function Footer({ company }: { company: Company }) {
             </ul></div>
           </div>
           <div className="f-bot">
-            <span>© {new Date().getFullYear()} {company.name}, LLC. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} {company.name}. All rights reserved.</span>
             <div className="lnks">
               <Link href="/privacy">Privacy Notice</Link><Link href="/terms">Terms of Use</Link>
               <Link href="/accessibility">Accessibility</Link><Link href="/privacy#dns">Do Not Sell My Information</Link>

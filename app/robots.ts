@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-const SITE = process.env.SITE_URL || 'https://www.edgelifetransportation.com';
+import { SITE_URL as SITE } from '@/lib/site';
 export default function robots(): MetadataRoute.Robots {
   return { rules: [{ userAgent: '*', allow: '/', disallow: ['/admin', '/api'] }], sitemap: `${SITE}/sitemap.xml` };
 }

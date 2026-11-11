@@ -6,6 +6,9 @@ import { Icon, Tick } from '@/components/Icons';
 import { SERVICES } from '@/lib/content';
 import { getCompany } from '@/lib/settings';
 import { telHref } from '@/lib/format';
+import JsonLd from '@/components/JsonLd';
+import { serviceGraph } from '@/lib/schema';
+import { OG_IMAGE } from '@/lib/site';
 
 export function generateStaticParams() { return SERVICES.map(s => ({ slug: s.slug })); }
 
@@ -13,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const s = SERVICES.find(x => x.slug === slug);
   if (!s) return {};
-  return { title: s.title, description: s.short };
+  return { title: s.title, description: s.short, alternates: { canonical: `/services/${s.slug}` }, openGraph: { title: s.title, description: s.short, url: `/services/${s.slug}`, images: [OG_IMAGE] } };
 }
 
 export default async function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -25,6 +28,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
 
   return (
     <>
+      <JsonLd data={serviceGraph(s, company)} />
       <PageHead crumb={[{ href: '/services', label: 'Services' }]} title={s.hero} intro={s.short} />
       <section>
         <div className="wrap">

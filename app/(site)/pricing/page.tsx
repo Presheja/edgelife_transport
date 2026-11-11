@@ -6,10 +6,22 @@ import { Icon } from '@/components/Icons';
 import { buildLevels, quote } from '@/lib/rates';
 import { money } from '@/lib/format';
 import { getCompany, getRates } from '@/lib/settings';
+import JsonLd from '@/components/JsonLd';
+import { faqGraph } from '@/lib/schema';
+
+const PRICING_FAQ: [string, string][] = [
+              ['Do I have to have insurance?', 'No. Most of our private-pay riders simply want a safe, reliable ride and pay for it directly. No medical reason is required and there is no authorization to chase.'],
+              ['What counts as a mile?', 'Only the miles with the rider in the vehicle, measured from pickup to destination. You are not charged for the driver getting to you or going home afterwards.'],
+              ['When do I pay?', 'Dispatch confirms the price and how you will pay when they call you back, before the ride is booked. Facilities and programs can ask about invoicing.'],
+              ['What if the appointment runs long?', 'Tell dispatch when you book. If you know you will be a while, we will quote the wait and return up front so there is no surprise afterwards.'],
+              ['Can I cancel?', 'Call as early as you can. Dispatch will explain our cancellation terms when you book.'],
+              ['Do you do stretcher transport?', 'Not at this time. Our fleet is ambulatory and wheelchair-accessible. If a rider needs stretcher-level transport we will tell you honestly and point you to a provider who does it, rather than take a booking we cannot serve properly.'],
+];
 
 export const metadata: Metadata = {
   title: 'Rates & Pricing',
-  description: 'Published rates for wheelchair and ambulatory private-pay rides in Taunton and Southeastern Massachusetts. A flat base that includes the first 5 miles, then a per-mile rate.',
+  description: 'Published wheelchair and ambulatory ride rates for Taunton and Southeastern MA. A flat base fare covers the first miles, then a simple per-mile rate.',
+  alternates: { canonical: '/pricing' },
 };
 
 export default async function Pricing() {
@@ -77,15 +89,9 @@ export default async function Pricing() {
       <section>
         <div className="wrap" style={{ maxWidth: 860 }}>
           <div className="sec-head reveal"><div className="eyebrow">Common questions</div><h2>About paying for a ride.</h2></div>
+          <JsonLd data={faqGraph(PRICING_FAQ)} />
           <div className="faq reveal">
-            {[
-              ['Do I have to have insurance?', 'No. Most of our private-pay riders simply want a safe, reliable ride and pay for it directly. No medical reason is required and there is no authorization to chase.'],
-              ['What counts as a mile?', 'Only the miles with the rider in the vehicle, measured from pickup to destination. You are not charged for the driver getting to you or going home afterwards.'],
-              ['When do I pay?', 'Dispatch confirms the price and how you will pay when they call you back, before the ride is booked. Facilities and programs can ask about invoicing.'],
-              ['What if the appointment runs long?', 'Tell dispatch when you book. If you know you will be a while, we will quote the wait and return up front so there is no surprise afterwards.'],
-              ['Can I cancel?', 'Call as early as you can. Dispatch will explain our cancellation terms when you book.'],
-              ['Do you do stretcher transport?', 'Not at this time. Our fleet is ambulatory and wheelchair-accessible. If a rider needs stretcher-level transport we will tell you honestly and point you to a provider who does it, rather than take a booking we cannot serve properly.'],
-            ].map(([q, a]) => (
+            {PRICING_FAQ.map(([q, a]) => (
               <details key={q}><summary>{q}</summary><p>{a}</p></details>
             ))}
           </div>

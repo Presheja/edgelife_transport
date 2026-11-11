@@ -5,6 +5,7 @@
 import { unstable_cache } from 'next/cache';
 import { serviceDb } from '@/lib/supabase/admin';
 import { DEFAULT_RATES, normalizeRates, type Rates } from '@/lib/rates';
+import { BRAND, SITE_URL } from '@/lib/site';
 
 export interface Company {
   name: string;
@@ -26,7 +27,7 @@ export interface Company {
 }
 
 export const DEFAULT_COMPANY: Company = {
-  name: 'EdgeLIFE Transportation',
+  name: BRAND,
   tagline: 'Driven by care. Guided by trust.',
   phone: '(508) 499-1799',
   email: 'info@edgelifetransport.com',
@@ -47,7 +48,7 @@ export const DEFAULT_COMPANY: Company = {
     'Seekonk', 'Westport', 'Wrentham', 'Bellingham', 'Carver', 'Halifax', 'Hanson', 'Hanover',
     'Duxbury', 'Boston', 'Providence, RI',
   ],
-  url: process.env.SITE_URL || 'https://www.edgelifetransportation.com',
+  url: SITE_URL,
 };
 
 export interface Testimonial { id: string; name: string; role: string; quote: string }

@@ -7,7 +7,8 @@ import { getCompany } from '@/lib/settings';
 
 export const metadata: Metadata = {
   title: 'Service Areas',
-  description: 'EdgeLIFE Transportation is based in Taunton and serves Bristol, Plymouth and Norfolk county communities, with longer trips to Boston and Providence by arrangement.',
+  description: 'EdgeLIFE Transport is based in Taunton and serves Bristol, Plymouth and Norfolk county towns, with longer trips to Boston and Providence by arrangement.',
+  alternates: { canonical: '/service-areas' },
 };
 
 export default async function ServiceAreas() {

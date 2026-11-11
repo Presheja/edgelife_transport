@@ -6,7 +6,8 @@ import { getCompany } from '@/lib/settings';
 
 export const metadata: Metadata = {
   title: 'Drive With Us — Careers',
-  description: 'Driver and attendant positions at EdgeLIFE Transportation in Taunton, MA. Wheelchair van and senior transport. Training provided.',
+  description: 'Driver and attendant positions at EdgeLIFE Transport in Taunton, MA. Wheelchair van and senior transport. Training provided.',
+  alternates: { canonical: '/careers' },
 };
 
 export default async function Careers() {

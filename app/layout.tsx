@@ -1,19 +1,22 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-const SITE = process.env.SITE_URL || 'https://www.edgelifetransportation.com';
+import { BRAND, SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE),
+  metadataBase: new URL(SITE_URL),
+  applicationName: BRAND,
   title: {
-    default: 'Wheelchair & Medical Transportation in Taunton, MA | EdgeLIFE Transportation',
-    template: '%s | EdgeLIFE Transportation',
+    default: `Wheelchair & Medical Rides in Taunton, MA | ${BRAND}`,
+    template: `%s | ${BRAND}`,
   },
   description:
-    'Private-pay wheelchair van and ambulatory transportation in Taunton and Southeastern Massachusetts. Published rates, screened drivers, accessible vans. Get an instant estimate.',
-  openGraph: { type: 'website', siteName: 'EdgeLIFE Transportation', locale: 'en_US' },
-  icons: { icon: '/img/logo-mark.png' },
-  robots: { index: true, follow: true },
+    'Private-pay wheelchair van and ambulatory rides in Taunton and Southeastern MA. Published rates, screened drivers, inspected vans. Get a price in 30 seconds.',
+  openGraph: { type: 'website', siteName: BRAND, locale: 'en_US' },
+  twitter: { card: 'summary_large_image' },
+  icons: { icon: '/img/logo-mark.png', apple: '/img/logo-mark.png' },
+  robots: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  formatDetection: { telephone: true },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

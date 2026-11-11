@@ -6,7 +6,8 @@ import { telHref } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Share Your Feedback',
-  description: 'Tell EdgeLIFE Transportation how your ride went. Your feedback goes straight to the team that runs the vans.',
+  description: 'Tell EdgeLIFE Transport how your ride went. Your feedback goes straight to the team that runs the vans.',
+  alternates: { canonical: '/feedback' },
 };
 
 export default async function Feedback() {

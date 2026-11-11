@@ -6,7 +6,8 @@ import { SERVICES } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Medical Transportation Services',
-  description: 'Wheelchair-accessible transport, medical appointments, hospital discharge, senior transport, adult day care routes, and errands and family events in Taunton and Southeastern Massachusetts.',
+  description: 'Wheelchair-accessible rides, medical appointments, hospital discharges, senior transport and adult day routes in Taunton and Southeastern Massachusetts.',
+  alternates: { canonical: '/services' },
 };
 
 export default function Services() {
