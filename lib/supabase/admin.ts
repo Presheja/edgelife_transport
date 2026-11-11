@@ -3,6 +3,7 @@
    form and every admin action goes through the server, which validates first. */
 import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { supabaseUrl } from './url';
 
 let cached: SupabaseClient | null = null;
 
@@ -11,13 +12,13 @@ function secretKey() {
 }
 
 export function hasSupabase() {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && secretKey());
+  return Boolean(supabaseUrl() && secretKey());
 }
 
 export function serviceDb(): SupabaseClient | null {
   if (!hasSupabase()) return null;
   if (!cached) {
-    cached = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, secretKey()!, {
+    cached = createClient(supabaseUrl()!, secretKey()!, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
