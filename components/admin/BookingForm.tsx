@@ -1,9 +1,11 @@
 import { BOOKING_STATUSES, MOBILITY, TRIP_TYPES, type Booking, type Driver } from '@/lib/admin-constants';
+import type { Vehicle } from '@/lib/vehicles';
 
 /* Shared by "new booking" (dispatch taking a phone call) and "edit booking". */
-export default function AdminBookingFields({ b, drivers = [] }: { b?: Booking; drivers?: Driver[] }) {
+export default function AdminBookingFields({ b, drivers = [], vehicles = [] }: { b?: Booking; drivers?: Driver[]; vehicles?: Vehicle[] }) {
   // Active drivers, plus whoever is already on this ride even if they have since gone inactive.
   const options = drivers.filter(d => d.status === 'active' || d.id === b?.driver_id);
+  const cars = vehicles.filter(v => v.status === 'active' || v.id === b?.vehicle_id);
   return (
     <div className="f-grid">
       <div className="fld"><label htmlFor="rider_name">Rider name</label>
@@ -42,8 +44,17 @@ export default function AdminBookingFields({ b, drivers = [] }: { b?: Booking; d
         </select>
         {!b?.driver_id && b?.driver && <small style={{ color: 'var(--muted, #6b7280)' }}>Previously noted as &ldquo;{b.driver}&rdquo;</small>}
       </div>
-      <div className="fld"><label htmlFor="vehicle">Vehicle</label>
-        <input id="vehicle" name="vehicle" defaultValue={b?.vehicle ?? ''} placeholder="e.g. W#6" /></div>
+      <div className="fld"><label htmlFor="vehicle_id">Vehicle</label>
+        <select id="vehicle_id" name="vehicle_id" defaultValue={b?.vehicle_id ?? ''}>
+          <option value="">Driver&rsquo;s assigned vehicle</option>
+          {cars.map(v => (
+            <option key={v.id} value={v.id}>
+              {v.name}{v.wheelchair_positions > 0 ? ' · wheelchair' : ''}{v.status !== 'active' ? ' (not in service)' : ''}
+            </option>
+          ))}
+        </select>
+        {!b?.vehicle_id && b?.vehicle && <small style={{ color: 'var(--muted, #6b7280)' }}>Previously noted as &ldquo;{b.vehicle}&rdquo;</small>}
+      </div>
       <div className="fld"><label htmlFor="contact_name">Contact name</label>
         <input id="contact_name" name="contact_name" defaultValue={b?.contact_name ?? ''} /></div>
       <div className="fld"><label htmlFor="relationship">Relationship to rider</label>

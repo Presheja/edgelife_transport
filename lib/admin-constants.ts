@@ -48,7 +48,7 @@ export interface Booking {
   pickup: string | null; dropoff: string | null; ride_date: string | null; ride_time: string | null;
   trip_type: string | null; contact_name: string | null; relationship: string | null; email: string | null;
   payment: string | null; notes: string | null; quoted_price: number | null; driver: string | null; driver_id: string | null;
-  vehicle: string | null; internal_notes: string | null;
+  vehicle: string | null; vehicle_id: string | null; internal_notes: string | null;
 }
 
 export interface Application {

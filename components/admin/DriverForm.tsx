@@ -13,8 +13,6 @@ export default function AdminDriverFields({ d }: { d?: Driver }) {
       <div className="fld"><label htmlFor="status">Status</label>
         <select id="status" name="status" defaultValue={d?.status ?? 'active'}>
           {DRIVER_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
-      <div className="fld"><label htmlFor="vehicle">Usual vehicle</label>
-        <input id="vehicle" name="vehicle" defaultValue={d?.vehicle ?? ''} placeholder="e.g. W#6" /></div>
       <div className="fld"><label htmlFor="license_expires">License expires</label>
         <input id="license_expires" name="license_expires" type="date" defaultValue={d?.license_expires ?? ''} /></div>
       <div className="fld full"><label className="chk-row"><input type="checkbox" name="wheelchair_trained" defaultChecked={d?.wheelchair_trained} />

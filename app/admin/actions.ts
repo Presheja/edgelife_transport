@@ -10,6 +10,7 @@ import { str } from '@/lib/validate';
 import { BOOKING_STATUSES, APPLICATION_STATUSES, DRIVER_STATUSES, NEEDS_WHEELCHAIR, OPEN_STATUSES } from '@/lib/admin-constants';
 import { DEFAULT_COMPANY } from '@/lib/settings';
 import { DEFAULT_RATES } from '@/lib/rates';
+import { VEHICLE_TYPES, VEHICLE_STATUSES, LOG_KINDS } from '@/lib/vehicles';
 
 function db() {
   const c = serviceDb();
@@ -43,6 +44,17 @@ export async function signOut() {
   redirect('/admin/login');
 }
 
+export async function changePassword(fd: FormData) {
+  await requireAdmin();
+  const password = String(fd.get('password') || '');
+  if (password.length < 10) redirect('/admin/profile?error=short');
+  if (password !== String(fd.get('confirm') || '')) redirect('/admin/profile?error=match');
+  const supabase = await authClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) redirect('/admin/profile?error=save');
+  redirect('/admin/profile?saved=1');
+}
+
 /* ---------- bookings ---------- */
 function bookingFields(fd: FormData) {
   const date = str(fd.get('ride_date'), 10);
@@ -64,34 +76,55 @@ function bookingFields(fd: FormData) {
     payment: str(fd.get('payment'), 80) || null,
     notes: str(fd.get('notes'), 2000) || null,
     quoted_price: num(fd.get('quoted_price')),
-    vehicle: str(fd.get('vehicle'), 60) || null,
     internal_notes: str(fd.get('internal_notes'), 4000) || null,
   };
 }
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-/* Attach the chosen driver (or clear it) and keep the status honest:
+/* Attach the chosen driver and vehicle (or clear them) and keep the status honest:
    picking a driver moves New/Confirmed to Assigned; removing the driver
-   from an Assigned ride moves it back to Confirmed. */
+   from an Assigned ride moves it back to Confirmed. If no vehicle is picked,
+   the driver's assigned vehicle is used. */
 async function withDriver(fd: FormData, row: ReturnType<typeof bookingFields>) {
-  const chosen = str(fd.get('driver_id'), 60);
-  if (chosen && UUID.test(chosen)) {
-    const { data } = await db().from('drivers').select('id, name, vehicle').eq('id', chosen).maybeSingle();
-    if (data) {
-      const status = row.status === 'new' || row.status === 'confirmed' ? 'assigned' : row.status;
-      return { ...row, status, driver_id: data.id as string, driver: data.name as string, vehicle: row.vehicle || (data.vehicle as string | null) };
-    }
+  const chosenDriver = str(fd.get('driver_id'), 60);
+  const chosenVehicle = str(fd.get('vehicle_id'), 60);
+  let driver: { id: string; name: string } | null = null;
+  if (chosenDriver && UUID.test(chosenDriver)) {
+    const { data } = await db().from('drivers').select('id, name').eq('id', chosenDriver).maybeSingle();
+    if (data) driver = { id: data.id as string, name: data.name as string };
   }
-  return { ...row, status: row.status === 'assigned' ? 'confirmed' : row.status, driver_id: null, driver: null };
+  let vehicle: { id: string; name: string } | null = null;
+  if (chosenVehicle && UUID.test(chosenVehicle)) {
+    const { data } = await db().from('vehicles').select('id, name').eq('id', chosenVehicle).maybeSingle();
+    if (data) vehicle = { id: data.id as string, name: data.name as string };
+  } else if (driver) {
+    const { data } = await db().from('vehicles').select('id, name').eq('driver_id', driver.id).neq('status', 'retired').limit(1).maybeSingle();
+    if (data) vehicle = { id: data.id as string, name: data.name as string };
+  }
+  const status = driver
+    ? (row.status === 'new' || row.status === 'confirmed' ? 'assigned' : row.status)
+    : (row.status === 'assigned' ? 'confirmed' : row.status);
+  return {
+    ...row, status,
+    driver_id: driver?.id ?? null, driver: driver?.name ?? null,
+    vehicle_id: vehicle?.id ?? null, vehicle: vehicle?.name ?? null,
+  };
 }
 
 /* Soft checks after saving. They never block dispatch, they just speak up. */
 async function driverWarnings(bookingId: string, row: Awaited<ReturnType<typeof withDriver>>) {
-  if (!row.driver_id || !OPEN_STATUSES.includes(row.status)) return [];
+  if (!OPEN_STATUSES.includes(row.status)) return [];
   const warns: string[] = [];
+  const needsChair = Boolean(row.mobility && NEEDS_WHEELCHAIR.includes(row.mobility));
+  if (row.vehicle_id) {
+    const { data: v } = await db().from('vehicles').select('status, wheelchair_positions').eq('id', row.vehicle_id).maybeSingle();
+    if (v && v.status !== 'active') warns.push('vehicle_down');
+    if (v && needsChair && !(v.wheelchair_positions > 0)) warns.push('vehicle_chair');
+  }
+  if (!row.driver_id) return warns;
   const { data: d } = await db().from('drivers').select('wheelchair_trained, status').eq('id', row.driver_id).maybeSingle();
-  if (d && !d.wheelchair_trained && row.mobility && NEEDS_WHEELCHAIR.includes(row.mobility)) warns.push('wheelchair');
+  if (d && !d.wheelchair_trained && needsChair) warns.push('wheelchair');
   if (d && d.status !== 'active') warns.push('inactive');
   if (row.ride_date) {
     const { data: same } = await db().from('bookings').select('id, ride_time')
@@ -196,7 +229,6 @@ function driverFields(fd: FormData) {
     email: str(fd.get('email'), 160) || null,
     status: ok(DRIVER_STATUSES, str(fd.get('status'), 20), 'active'),
     wheelchair_trained: fd.get('wheelchair_trained') === 'on',
-    vehicle: str(fd.get('vehicle'), 60) || null,
     license_expires: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : null,
     notes: str(fd.get('notes'), 4000) || null,
   };
@@ -236,6 +268,114 @@ export async function deleteDriver(fd: FormData) {
   await db().from('drivers').delete().eq('id', id);
   revalidatePath('/admin', 'layout');
   redirect('/admin/drivers');
+}
+
+/* ---------- vehicles ---------- */
+const int = (v: FormDataEntryValue | null) => { const n = num(v); return n === null ? null : Math.round(n); };
+const day = (v: FormDataEntryValue | null) => { const d = str(v, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null; };
+
+function vehicleFields(fd: FormData) {
+  const driver = str(fd.get('driver_id'), 60);
+  return {
+    name: str(fd.get('name'), 60),
+    type: ok(VEHICLE_TYPES, str(fd.get('type'), 30), 'wheelchair_van'),
+    make: str(fd.get('make'), 60) || null,
+    model: str(fd.get('model'), 60) || null,
+    year: int(fd.get('year')),
+    plate: str(fd.get('plate'), 20).toUpperCase() || null,
+    vin: str(fd.get('vin'), 20).toUpperCase() || null,
+    color: str(fd.get('color'), 30) || null,
+    seats: int(fd.get('seats')),
+    wheelchair_positions: Math.max(0, int(fd.get('wheelchair_positions')) ?? 0),
+    status: ok(VEHICLE_STATUSES, str(fd.get('status'), 20), 'active'),
+    mileage: Math.max(0, int(fd.get('mileage')) ?? 0),
+    driver_id: UUID.test(driver) ? driver : null,
+    oil_interval: Math.max(0, int(fd.get('oil_interval')) ?? 5000),
+    inspection_expires: day(fd.get('inspection_expires')),
+    registration_expires: day(fd.get('registration_expires')),
+    insurance_expires: day(fd.get('insurance_expires')),
+    lift_service_due: day(fd.get('lift_service_due')),
+    notes: str(fd.get('notes'), 4000) || null,
+  };
+}
+
+/* One primary vehicle per driver: assigning a driver here frees them from any other vehicle. */
+async function claimDriver(vehicleId: string, driverId: string | null) {
+  if (driverId) await db().from('vehicles').update({ driver_id: null }).eq('driver_id', driverId).neq('id', vehicleId);
+}
+
+export async function createVehicle(fd: FormData) {
+  await requireAdmin();
+  const row = vehicleFields(fd);
+  if (!row.name) redirect('/admin/vehicles/new?error=required');
+  const { data, error } = await db().from('vehicles').insert(row).select('id').single();
+  if (error || !data) redirect('/admin/vehicles/new?error=save');
+  await claimDriver(data.id, row.driver_id);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/vehicles/${data.id}?saved=1`);
+}
+
+export async function updateVehicle(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (!UUID.test(id)) redirect('/admin/vehicles');
+  const row = vehicleFields(fd);
+  if (!row.name) redirect(`/admin/vehicles/${id}?error=required`);
+  const { error } = await db().from('vehicles').update(row).eq('id', id);
+  if (error) redirect(`/admin/vehicles/${id}?error=save`);
+  await claimDriver(id, row.driver_id);
+  await db().from('bookings').update({ vehicle: row.name }).eq('vehicle_id', id);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/vehicles/${id}?saved=1`);
+}
+
+export async function deleteVehicle(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (fd.get('confirm') !== 'yes') redirect(`/admin/vehicles/${id}?error=confirm`);
+  await db().from('vehicles').delete().eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect('/admin/vehicles');
+}
+
+export async function addVehicleLog(fd: FormData) {
+  const admin = await requireAdmin();
+  const vehicleId = str(fd.get('vehicle_id'), 60);
+  if (!UUID.test(vehicleId)) redirect('/admin/vehicles');
+  const kind = ok(LOG_KINDS, str(fd.get('kind'), 20), 'maintenance');
+  const mileage = int(fd.get('mileage'));
+  const row = {
+    vehicle_id: vehicleId, kind,
+    log_date: day(fd.get('log_date')) || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
+    mileage: mileage != null && mileage >= 0 ? mileage : null,
+    cost: num(fd.get('cost')),
+    vendor: str(fd.get('vendor'), 120) || null,
+    description: str(fd.get('description'), 2000) || null,
+    next_due_date: day(fd.get('next_due_date')),
+    next_due_mileage: int(fd.get('next_due_mileage')),
+    created_by: admin.email,
+  };
+  if (kind === 'mileage' && row.mileage == null) redirect(`/admin/vehicles/${vehicleId}?error=mileage#log`);
+  const { error } = await db().from('vehicle_logs').insert(row);
+  if (error) redirect(`/admin/vehicles/${vehicleId}?error=save#log`);
+
+  // Let the log keep the vehicle record current.
+  const { data: v } = await db().from('vehicles').select('mileage').eq('id', vehicleId).maybeSingle();
+  const patch: Record<string, unknown> = {};
+  if (v && row.mileage != null && row.mileage > (v.mileage ?? 0)) patch.mileage = row.mileage;
+  if (row.next_due_date && kind === 'inspection') patch.inspection_expires = row.next_due_date;
+  if (row.next_due_date && kind === 'lift') patch.lift_service_due = row.next_due_date;
+  if (Object.keys(patch).length) await db().from('vehicles').update(patch).eq('id', vehicleId);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/vehicles/${vehicleId}?saved=log#log`);
+}
+
+export async function deleteVehicleLog(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60), vehicleId = str(fd.get('vehicle_id'), 60);
+  if (UUID.test(id)) await db().from('vehicle_logs').delete().eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/vehicles/${vehicleId}?saved=removed#log`);
 }
 
 /* ---------- rates ---------- */

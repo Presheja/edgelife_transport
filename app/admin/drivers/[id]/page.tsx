@@ -18,11 +18,12 @@ export default async function DriverDetail({ params, searchParams }: {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = serviceDb()!;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const [{ data }, { data: up }, done] = await Promise.all([
+  const [{ data }, { data: up }, done, { data: car }] = await Promise.all([
     db.from('drivers').select('*').eq('id', id).maybeSingle(),
     db.from('bookings').select('*').eq('driver_id', id).gte('ride_date', today).in('status', OPEN_STATUSES)
       .order('ride_date', { ascending: true }).order('ride_time', { ascending: true }).limit(100),
     db.from('bookings').select('id', { count: 'exact', head: true }).eq('driver_id', id).eq('status', 'completed'),
+    db.from('vehicles').select('id, name').eq('driver_id', id).neq('status', 'retired').limit(1).maybeSingle(),
   ]);
   if (!data) notFound();
   const d = data as Driver;
@@ -34,6 +35,7 @@ export default async function DriverDetail({ params, searchParams }: {
       <p className="sub">
         <a href={telHref(d.phone)} style={{ color: 'var(--steel)', fontWeight: 600 }}>{d.phone}</a>
         {' · '}{d.wheelchair_trained ? 'Wheelchair trained' : 'Not wheelchair trained'}
+        {' · '}{car ? <>Drives <Link href={`/admin/vehicles/${car.id}`} style={{ color: 'var(--steel)', fontWeight: 600 }}>{car.name}</Link></> : 'No vehicle assigned'}
         {' · '}{done.count ?? 0} completed ride{done.count === 1 ? '' : 's'}
         {d.application_id && <> · <Link href={`/admin/applications/${d.application_id}`} style={{ color: 'var(--steel)' }}>Original application</Link></>}
       </p>

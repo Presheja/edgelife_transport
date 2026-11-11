@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { APPLICATION_STATUSES, fmtStamp, label, type Application } from '@/lib/admin-constants';
+import DriversTabs from '@/components/admin/DriversTabs';
 
 export const metadata = { title: 'Applications' };
 
@@ -14,8 +15,9 @@ export default async function Applications({ searchParams }: { searchParams: Pro
   const rows = (data || []) as Application[];
   return (
     <>
-      <h1>Driver applications</h1>
-      <p className="sub">People who applied on the Careers page.</p>
+      <h1>Drivers</h1>
+      <p className="sub">People who applied on the Careers page. Hire from an application to put them on the roster.</p>
+      <DriversTabs active="applications" />
       <div className="filters">
         <Link href="/admin/applications" className={!status ? 'on' : ''}>All</Link>
         {APPLICATION_STATUSES.map(s => <Link key={s.id} href={`/admin/applications?status=${s.id}`} className={status === s.id ? 'on' : ''}>{s.label}</Link>)}

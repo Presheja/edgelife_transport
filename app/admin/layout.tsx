@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import './admin.css';
 import { currentAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
+import { vehicleAlerts, type Vehicle } from '@/lib/vehicles';
+import AdminShell from '@/components/admin/AdminShell';
 import { signOut } from './actions';
 
 export const metadata: Metadata = {
@@ -13,41 +14,25 @@ export const dynamic = 'force-dynamic';
 
 async function counts() {
   const db = serviceDb();
-  if (!db) return { b: 0, a: 0 };
-  const [b, a] = await Promise.all([
+  if (!db) return { bookings: 0, applications: 0, vehicles: 0 };
+  const [b, a, v, oil] = await Promise.all([
     db.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'new'),
     db.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+    db.from('vehicles').select('*').neq('status', 'retired'),
+    db.from('vehicle_logs').select('vehicle_id, mileage').eq('kind', 'oil_change'),
   ]);
-  return { b: b.count ?? 0, a: a.count ?? 0 };
+  const lastOil = new Map<string, number>();
+  for (const r of oil.data || []) if (r.mileage != null) lastOil.set(r.vehicle_id, Math.max(lastOil.get(r.vehicle_id) ?? 0, r.mileage));
+  const vehicles = ((v.data || []) as Vehicle[]).filter(x => vehicleAlerts(x, lastOil.get(x.id) ?? null).length > 0).length;
+  return { bookings: b.count ?? 0, applications: a.count ?? 0, vehicles };
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await currentAdmin();
-  const n = admin ? await counts() : { b: 0, a: 0 };
+  if (!admin) return <div className="adm">{children}</div>;
   return (
     <div className="adm">
-      {admin && (
-        <div className="adm-top">
-          <div className="in">
-            <Link href="/admin" className="adm-brand">EdgeLIFE<small>Admin</small></Link>
-            <nav className="adm-nav">
-              <Link href="/admin">Dashboard</Link>
-              <Link href="/admin/bookings">Bookings {n.b > 0 && <span className="adm-badge">{n.b}</span>}</Link>
-              <Link href="/admin/drivers">Drivers</Link>
-              <Link href="/admin/applications">Applications {n.a > 0 && <span className="adm-badge">{n.a}</span>}</Link>
-              <Link href="/admin/rates">Rates</Link>
-              <Link href="/admin/settings">Settings</Link>
-              <Link href="/admin/testimonials">Testimonials</Link>
-            </nav>
-            <div className="adm-who">
-              <Link href="/" target="_blank" style={{ color: 'rgba(255,255,255,.8)' }}>View site</Link>
-              <span>{admin.email}</span>
-              <form action={signOut}><button type="submit">Sign out</button></form>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className={admin ? 'adm-main' : ''}>{children}</div>
+      <AdminShell email={admin.email} counts={await counts()} signOut={signOut}>{children}</AdminShell>
     </div>
   );
 }

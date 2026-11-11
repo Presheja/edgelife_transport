@@ -3,21 +3,26 @@ import AdminBookingFields from '@/components/admin/BookingForm';
 import { createBooking } from '../../actions';
 import { serviceDb } from '@/lib/supabase/admin';
 import type { Driver } from '@/lib/admin-constants';
+import type { Vehicle } from '@/lib/vehicles';
 
 export const metadata = { title: 'New booking' };
 
 export default async function NewBooking({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requireAdmin();
   const { error } = await searchParams;
-  const { data } = await serviceDb()!.from('drivers').select('*').eq('status', 'active').order('name');
+  const [{ data }, { data: veh }] = await Promise.all([
+    serviceDb()!.from('drivers').select('*').eq('status', 'active').order('name'),
+    serviceDb()!.from('vehicles').select('*').eq('status', 'active').order('name'),
+  ]);
   const drivers = (data || []) as Driver[];
+  const vehicles = (veh || []) as Vehicle[];
   return (
     <>
       <h1>New booking</h1>
       <p className="sub">Enter a ride taken by phone so it lives in the same list as website requests.</p>
       {error && <div className="flash bad">{error === 'required' ? 'Rider name and phone are required.' : 'Could not save. Try again.'}</div>}
       <form action={createBooking} className="adm-card">
-        <AdminBookingFields drivers={drivers} />
+        <AdminBookingFields drivers={drivers} vehicles={vehicles} />
         <div className="row-btn"><button className="abtn pri" type="submit">Save booking</button></div>
       </form>
     </>

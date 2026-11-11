@@ -21,6 +21,7 @@ export default async function ApplicationDetail({ params, searchParams }: {
   const { data: driver } = await serviceDb()!.from('drivers').select('id').eq('application_id', id).maybeSingle();
   return (
     <>
+      <p className="sub" style={{ marginBottom: 6 }}><Link href="/admin/applications" style={{ color: 'var(--steel)' }}>&larr; Applications</Link></p>
       <h1>{a.name}</h1>
       <p className="sub">Applied {fmtStamp(a.created_at)}</p>
       {saved && <div className="flash good">Saved.</div>}
