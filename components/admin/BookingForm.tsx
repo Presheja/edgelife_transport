@@ -1,7 +1,9 @@
-import { BOOKING_STATUSES, MOBILITY, TRIP_TYPES, type Booking } from '@/lib/admin-constants';
+import { BOOKING_STATUSES, MOBILITY, TRIP_TYPES, type Booking, type Driver } from '@/lib/admin-constants';
 
 /* Shared by "new booking" (dispatch taking a phone call) and "edit booking". */
-export default function AdminBookingFields({ b }: { b?: Booking }) {
+export default function AdminBookingFields({ b, drivers = [] }: { b?: Booking; drivers?: Driver[] }) {
+  // Active drivers, plus whoever is already on this ride even if they have since gone inactive.
+  const options = drivers.filter(d => d.status === 'active' || d.id === b?.driver_id);
   return (
     <div className="f-grid">
       <div className="fld"><label htmlFor="rider_name">Rider name</label>
@@ -29,8 +31,17 @@ export default function AdminBookingFields({ b }: { b?: Booking }) {
         <input id="payment" name="payment" defaultValue={b?.payment ?? 'Private pay'} /></div>
       <div className="fld"><label htmlFor="quoted_price">Quoted price ($)</label>
         <input id="quoted_price" name="quoted_price" inputMode="decimal" defaultValue={b?.quoted_price ?? ''} /></div>
-      <div className="fld"><label htmlFor="driver">Driver</label>
-        <input id="driver" name="driver" defaultValue={b?.driver ?? ''} /></div>
+      <div className="fld"><label htmlFor="driver_id">Driver</label>
+        <select id="driver_id" name="driver_id" defaultValue={b?.driver_id ?? ''}>
+          <option value="">Unassigned</option>
+          {options.map(d => (
+            <option key={d.id} value={d.id}>
+              {d.name}{d.wheelchair_trained ? ' · wheelchair trained' : ''}{d.status !== 'active' ? ' (inactive)' : ''}
+            </option>
+          ))}
+        </select>
+        {!b?.driver_id && b?.driver && <small style={{ color: 'var(--muted, #6b7280)' }}>Previously noted as &ldquo;{b.driver}&rdquo;</small>}
+      </div>
       <div className="fld"><label htmlFor="vehicle">Vehicle</label>
         <input id="vehicle" name="vehicle" defaultValue={b?.vehicle ?? ''} placeholder="e.g. W#6" /></div>
       <div className="fld"><label htmlFor="contact_name">Contact name</label>

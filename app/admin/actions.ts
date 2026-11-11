@@ -7,7 +7,7 @@ import { allowedEmails, requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { tooMany } from '@/lib/ratelimit';
 import { str } from '@/lib/validate';
-import { BOOKING_STATUSES, APPLICATION_STATUSES } from '@/lib/admin-constants';
+import { BOOKING_STATUSES, APPLICATION_STATUSES, DRIVER_STATUSES, NEEDS_WHEELCHAIR, OPEN_STATUSES } from '@/lib/admin-constants';
 import { DEFAULT_COMPANY } from '@/lib/settings';
 import { DEFAULT_RATES } from '@/lib/rates';
 
@@ -64,32 +64,74 @@ function bookingFields(fd: FormData) {
     payment: str(fd.get('payment'), 80) || null,
     notes: str(fd.get('notes'), 2000) || null,
     quoted_price: num(fd.get('quoted_price')),
-    driver: str(fd.get('driver'), 120) || null,
     vehicle: str(fd.get('vehicle'), 60) || null,
     internal_notes: str(fd.get('internal_notes'), 4000) || null,
   };
 }
 
+const UUID = /^[0-9a-f-]{36}$/i;
+
+/* Attach the chosen driver (or clear it) and keep the status honest:
+   picking a driver moves New/Confirmed to Assigned; removing the driver
+   from an Assigned ride moves it back to Confirmed. */
+async function withDriver(fd: FormData, row: ReturnType<typeof bookingFields>) {
+  const chosen = str(fd.get('driver_id'), 60);
+  if (chosen && UUID.test(chosen)) {
+    const { data } = await db().from('drivers').select('id, name, vehicle').eq('id', chosen).maybeSingle();
+    if (data) {
+      const status = row.status === 'new' || row.status === 'confirmed' ? 'assigned' : row.status;
+      return { ...row, status, driver_id: data.id as string, driver: data.name as string, vehicle: row.vehicle || (data.vehicle as string | null) };
+    }
+  }
+  return { ...row, status: row.status === 'assigned' ? 'confirmed' : row.status, driver_id: null, driver: null };
+}
+
+/* Soft checks after saving. They never block dispatch, they just speak up. */
+async function driverWarnings(bookingId: string, row: Awaited<ReturnType<typeof withDriver>>) {
+  if (!row.driver_id || !OPEN_STATUSES.includes(row.status)) return [];
+  const warns: string[] = [];
+  const { data: d } = await db().from('drivers').select('wheelchair_trained, status').eq('id', row.driver_id).maybeSingle();
+  if (d && !d.wheelchair_trained && row.mobility && NEEDS_WHEELCHAIR.includes(row.mobility)) warns.push('wheelchair');
+  if (d && d.status !== 'active') warns.push('inactive');
+  if (row.ride_date) {
+    const { data: same } = await db().from('bookings').select('id, ride_time')
+      .eq('driver_id', row.driver_id).eq('ride_date', row.ride_date).in('status', OPEN_STATUSES).neq('id', bookingId);
+    const mins = (t?: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
+    const mine = mins(row.ride_time);
+    const clash = (same || []).some(o => {
+      const theirs = mins(o.ride_time as string | null);
+      return mine === null || theirs === null || Math.abs(mine - theirs) < 90;
+    });
+    if (clash) warns.push('overlap');
+  }
+  return warns;
+}
+const warnQuery = (w: string[]) => (w.length ? '&warn=' + w.join(',') : '');
+
 export async function createBooking(fd: FormData) {
   await requireAdmin();
-  const row = bookingFields(fd);
-  if (!row.rider_name || !row.rider_phone) redirect('/admin/bookings/new?error=required');
+  const base = bookingFields(fd);
+  if (!base.rider_name || !base.rider_phone) redirect('/admin/bookings/new?error=required');
+  const row = await withDriver(fd, base);
   const { data, error } = await db().from('bookings').insert({ ...row, source: 'phone' }).select('id').single();
   if (error || !data) redirect('/admin/bookings/new?error=save');
+  const warns = await driverWarnings(data.id, row);
   revalidatePath('/admin', 'layout');
-  redirect(`/admin/bookings/${data.id}?saved=1`);
+  redirect(`/admin/bookings/${data.id}?saved=1${warnQuery(warns)}`);
 }
 
 export async function updateBooking(fd: FormData) {
   await requireAdmin();
   const id = str(fd.get('id'), 60);
-  const row = bookingFields(fd);
+  const base = bookingFields(fd);
   if (!id) redirect('/admin/bookings');
-  if (!row.rider_name || !row.rider_phone) redirect(`/admin/bookings/${id}?error=required`);
+  if (!base.rider_name || !base.rider_phone) redirect(`/admin/bookings/${id}?error=required`);
+  const row = await withDriver(fd, base);
   const { error } = await db().from('bookings').update(row).eq('id', id);
   if (error) redirect(`/admin/bookings/${id}?error=save`);
+  const warns = await driverWarnings(id, row);
   revalidatePath('/admin', 'layout');
-  redirect(`/admin/bookings/${id}?saved=1`);
+  redirect(`/admin/bookings/${id}?saved=1${warnQuery(warns)}`);
 }
 
 export async function deleteBooking(fd: FormData) {
@@ -121,6 +163,79 @@ export async function deleteApplication(fd: FormData) {
   await db().from('applications').delete().eq('id', id);
   revalidatePath('/admin', 'layout');
   redirect('/admin/applications');
+}
+
+/* One click from a hired applicant to a driver on the roster. */
+export async function hireApplicant(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (!UUID.test(id)) redirect('/admin/applications');
+  const { data: existing } = await db().from('drivers').select('id').eq('application_id', id).maybeSingle();
+  if (existing) redirect(`/admin/drivers/${existing.id}`);
+  const { data: a } = await db().from('applications').select('*').eq('id', id).maybeSingle();
+  if (!a) redirect('/admin/applications');
+  const wc = String(a.wheelchair_exp || '').toLowerCase();
+  const { data, error } = await db().from('drivers').insert({
+    name: a.name, phone: a.phone, email: a.email, status: 'active', application_id: a.id,
+    // Only "Experienced" or "Certified" count. "Some experience" still needs training sign-off.
+    wheelchair_trained: /^(experienced|certified)/.test(wc),
+    notes: [a.license && `License: ${a.license}`, a.availability && `Availability: ${a.availability}`].filter(Boolean).join('\n') || null,
+  }).select('id').single();
+  if (error || !data) redirect(`/admin/applications/${id}?error=save`);
+  await db().from('applications').update({ status: 'hired' }).eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/drivers/${data.id}?saved=hired`);
+}
+
+/* ---------- drivers ---------- */
+function driverFields(fd: FormData) {
+  const exp = str(fd.get('license_expires'), 10);
+  return {
+    name: str(fd.get('name'), 120),
+    phone: str(fd.get('phone'), 40),
+    email: str(fd.get('email'), 160) || null,
+    status: ok(DRIVER_STATUSES, str(fd.get('status'), 20), 'active'),
+    wheelchair_trained: fd.get('wheelchair_trained') === 'on',
+    vehicle: str(fd.get('vehicle'), 60) || null,
+    license_expires: /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : null,
+    notes: str(fd.get('notes'), 4000) || null,
+  };
+}
+
+export async function createDriver(fd: FormData) {
+  await requireAdmin();
+  const row = driverFields(fd);
+  if (!row.name || !row.phone) redirect('/admin/drivers/new?error=required');
+  const { data, error } = await db().from('drivers').insert(row).select('id').single();
+  if (error || !data) redirect('/admin/drivers/new?error=save');
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/drivers/${data.id}?saved=1`);
+}
+
+export async function updateDriver(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (!UUID.test(id)) redirect('/admin/drivers');
+  const row = driverFields(fd);
+  if (!row.name || !row.phone) redirect(`/admin/drivers/${id}?error=required`);
+  const { error } = await db().from('drivers').update(row).eq('id', id);
+  if (error) redirect(`/admin/drivers/${id}?error=save`);
+  // Keep the name shown on their bookings in step with the roster.
+  await db().from('bookings').update({ driver: row.name }).eq('driver_id', id);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/drivers/${id}?saved=1`);
+}
+
+export async function deleteDriver(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (fd.get('confirm') !== 'yes') redirect(`/admin/drivers/${id}?error=confirm`);
+  // Open rides go back to the unassigned pile instead of silently keeping a ghost driver.
+  await db().from('bookings').update({ status: 'confirmed', driver_id: null, driver: null })
+    .eq('driver_id', id).eq('status', 'assigned');
+  await db().from('drivers').delete().eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect('/admin/drivers');
 }
 
 /* ---------- rates ---------- */

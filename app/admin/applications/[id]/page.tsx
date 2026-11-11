@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { APPLICATION_STATUSES, fmtStamp, type Application } from '@/lib/admin-constants';
-import { updateApplication, deleteApplication } from '../../actions';
+import Link from 'next/link';
+import { updateApplication, deleteApplication, hireApplicant } from '../../actions';
 import { telHref } from '@/lib/format';
 
 export const metadata = { title: 'Application' };
@@ -17,12 +18,22 @@ export default async function ApplicationDetail({ params, searchParams }: {
   const { data } = await serviceDb()!.from('applications').select('*').eq('id', id).maybeSingle();
   if (!data) notFound();
   const a = data as Application;
+  const { data: driver } = await serviceDb()!.from('drivers').select('id').eq('application_id', id).maybeSingle();
   return (
     <>
       <h1>{a.name}</h1>
       <p className="sub">Applied {fmtStamp(a.created_at)}</p>
       {saved && <div className="flash good">Saved.</div>}
       {error && <div className="flash bad">{error === 'confirm' ? 'Tick the box to confirm the delete.' : 'Could not save. Try again.'}</div>}
+      {driver ? (
+        <div className="flash good">On the driver roster. <Link href={`/admin/drivers/${driver.id}`} style={{ fontWeight: 600 }}>Open their driver profile</Link></div>
+      ) : (
+        <form action={hireApplicant} className="adm-card" style={{ display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 20 }}>
+          <input type="hidden" name="id" value={a.id} />
+          <span>Ready to bring {a.name.split(' ')[0]} on? This marks the application Hired and adds them to Drivers.</span>
+          <button className="abtn pri" type="submit">Hire and add to drivers</button>
+        </form>
+      )}
       <div className="two-col">
         <div className="adm-card">
           <h2>Applicant</h2>

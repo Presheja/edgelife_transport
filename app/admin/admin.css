@@ -69,3 +69,5 @@ table.tbl{width:100%;border-collapse:collapse;font-size:.92rem}
 details.del summary{cursor:pointer;color:#8A1F14;font-size:.9rem;font-weight:600}
 details.del .adm-card{margin-top:12px}
 .adm{display:flow-root}
+.pill.active{background:#E1F0E3;color:#1F6B2E}
+.pill.inactive{background:#ECEAE6;color:#6B6558}

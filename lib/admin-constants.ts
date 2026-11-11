@@ -15,6 +15,17 @@ export const APPLICATION_STATUSES = [
   { id: 'declined',  label: 'Declined' },
 ] as const;
 
+export const DRIVER_STATUSES = [
+  { id: 'active',   label: 'Active' },
+  { id: 'inactive', label: 'Inactive' },
+] as const;
+
+/** Mobility levels that need a wheelchair-trained driver. */
+export const NEEDS_WHEELCHAIR = ['wheelchair', 'powerchair'];
+
+/** Booking statuses that still need a driver on the road. */
+export const OPEN_STATUSES = ['new', 'confirmed', 'assigned'];
+
 export const MOBILITY = [
   { id: 'ambulatory', label: 'Walks on their own' },
   { id: 'walker',     label: 'Walker or cane' },
@@ -36,7 +47,7 @@ export interface Booking {
   rider_name: string; rider_phone: string; mobility: string | null; memory_loss: boolean;
   pickup: string | null; dropoff: string | null; ride_date: string | null; ride_time: string | null;
   trip_type: string | null; contact_name: string | null; relationship: string | null; email: string | null;
-  payment: string | null; notes: string | null; quoted_price: number | null; driver: string | null;
+  payment: string | null; notes: string | null; quoted_price: number | null; driver: string | null; driver_id: string | null;
   vehicle: string | null; internal_notes: string | null;
 }
 
@@ -44,6 +55,12 @@ export interface Application {
   id: string; created_at: string; status: string; name: string; phone: string; email: string | null;
   town: string | null; license: string | null; years: string | null; wheelchair_exp: string | null;
   availability: string | null; consent_screening: boolean; notes: string | null; internal_notes: string | null;
+}
+
+export interface Driver {
+  id: string; created_at: string; name: string; phone: string; email: string | null; status: string;
+  wheelchair_trained: boolean; vehicle: string | null; license_expires: string | null; notes: string | null;
+  application_id: string | null;
 }
 
 export const fmtDate = (d?: string | null) => d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';

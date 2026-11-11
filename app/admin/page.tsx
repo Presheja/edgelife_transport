@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin, allowedEmails } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
-import { fmtDate, fmtStamp, fmtTime, label, MOBILITY, type Booking } from '@/lib/admin-constants';
+import { OPEN_STATUSES, fmtDate, fmtStamp, fmtTime, label, MOBILITY, type Booking } from '@/lib/admin-constants';
 
 export const metadata = { title: 'Dashboard' };
 
@@ -11,12 +11,13 @@ export default async function Dashboard() {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const week = new Date(Date.now() + 7 * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-  const [newB, upcoming, newA, recent, sched] = await Promise.all([
+  const [newB, upcoming, newA, recent, sched, unassigned] = await Promise.all([
     db.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'new'),
     db.from('bookings').select('id', { count: 'exact', head: true }).gte('ride_date', today).lte('ride_date', week).in('status', ['new', 'confirmed', 'assigned']),
     db.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'new'),
     db.from('bookings').select('*').eq('status', 'new').order('created_at', { ascending: false }).limit(6),
     db.from('bookings').select('*').eq('ride_date', today).in('status', ['new', 'confirmed', 'assigned']).order('ride_time', { ascending: true }),
+    db.from('bookings').select('id', { count: 'exact', head: true }).is('driver_id', null).gte('ride_date', today).lte('ride_date', week).in('status', OPEN_STATUSES),
   ]);
   const recentRows = (recent.data || []) as Booking[];
   const todayRows = (sched.data || []) as Booking[];
@@ -33,6 +34,7 @@ export default async function Dashboard() {
       <div className="adm-grid">
         <Link href="/admin/bookings?status=new" className={`stat${(newB.count ?? 0) > 0 ? ' hot' : ''}`}><b>{newB.count ?? 0}</b><span>New ride requests</span></Link>
         <Link href="/admin/bookings" className="stat"><b>{upcoming.count ?? 0}</b><span>Rides in the next 7 days</span></Link>
+        <Link href="/admin/bookings?status=unassigned" className={`stat${(unassigned.count ?? 0) > 0 ? ' hot' : ''}`}><b>{unassigned.count ?? 0}</b><span>Rides this week with no driver</span></Link>
         <Link href="/admin/applications?status=new" className={`stat${(newA.count ?? 0) > 0 ? ' hot' : ''}`}><b>{newA.count ?? 0}</b><span>New driver applications</span></Link>
       </div>
 
@@ -41,10 +43,11 @@ export default async function Dashboard() {
           <h2>Today&rsquo;s rides</h2>
           <div className="tbl-wrap">
             {todayRows.length === 0 ? <div className="empty">Nothing scheduled for today.</div> : (
-              <table className="tbl"><thead><tr><th>Time</th><th>Rider</th><th>Route</th></tr></thead><tbody>
+              <table className="tbl"><thead><tr><th>Time</th><th>Rider</th><th>Driver</th><th>Route</th></tr></thead><tbody>
                 {todayRows.map(b => (
                   <tr key={b.id}><td>{fmtTime(b.ride_time) || 'TBD'}</td>
                     <td><Link className="row" href={`/admin/bookings/${b.id}`}>{b.rider_name}</Link><small>{label(MOBILITY, b.mobility)}</small></td>
+                    <td>{b.driver_id ? <Link className="row" href={`/admin/drivers/${b.driver_id}`}>{b.driver}</Link> : <span className="pill new">Needs driver</span>}</td>
                     <td>{b.pickup}<small>to {b.dropoff}</small></td></tr>
                 ))}
               </tbody></table>

@@ -33,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <nav className="adm-nav">
               <Link href="/admin">Dashboard</Link>
               <Link href="/admin/bookings">Bookings {n.b > 0 && <span className="adm-badge">{n.b}</span>}</Link>
+              <Link href="/admin/drivers">Drivers</Link>
               <Link href="/admin/applications">Applications {n.a > 0 && <span className="adm-badge">{n.a}</span>}</Link>
               <Link href="/admin/rates">Rates</Link>
               <Link href="/admin/settings">Settings</Link>
