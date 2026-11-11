@@ -50,7 +50,11 @@ export default async function Home() {
       </div>
 
       {/* ---------- the fear nobody names ---------- */}
-      <section className="dark">
+      <section className="dark fear">
+        <div className="fear-bg" aria-hidden="true">
+          <img src="/img/van-ramp.jpg" alt="" loading="lazy" />
+        </div>
+        <div className="hero-grain" />
         <div className="wrap">
           <div className="sec-head reveal" style={{ maxWidth: '58ch' }}>
             <div className="eyebrow on-dark">Let&rsquo;s say the quiet part out loud</div>
