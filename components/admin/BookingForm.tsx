@@ -1,8 +1,11 @@
 import { BOOKING_STATUSES, MOBILITY, TRIP_TYPES, type Booking, type Driver } from '@/lib/admin-constants';
 import type { Vehicle } from '@/lib/vehicles';
+import { DECLINE_REASONS } from '@/lib/referrals';
+
+export interface SourceOption { id: string; organization: string; contact_name: string | null; status: string }
 
 /* Shared by "new booking" (dispatch taking a phone call) and "edit booking". */
-export default function AdminBookingFields({ b, drivers = [], vehicles = [] }: { b?: Booking; drivers?: Driver[]; vehicles?: Vehicle[] }) {
+export default function AdminBookingFields({ b, drivers = [], vehicles = [], sources = [] }: { b?: Booking; drivers?: Driver[]; vehicles?: Vehicle[]; sources?: SourceOption[] }) {
   // Active drivers, plus whoever is already on this ride even if they have since gone inactive.
   const options = drivers.filter(d => d.status === 'active' || d.id === b?.driver_id);
   const cars = vehicles.filter(v => v.status === 'active' || v.id === b?.vehicle_id);
@@ -55,6 +58,20 @@ export default function AdminBookingFields({ b, drivers = [], vehicles = [] }: {
         </select>
         {!b?.vehicle_id && b?.vehicle && <small style={{ color: 'var(--muted, #6b7280)' }}>Previously noted as &ldquo;{b.vehicle}&rdquo;</small>}
       </div>
+      <div className="fld"><label htmlFor="referral_source_id">Referral source</label>
+        <select id="referral_source_id" name="referral_source_id" defaultValue={b?.referral_source_id ?? ''}>
+          <option value="">None / came to us directly</option>
+          {sources.filter(s => s.status !== 'closed' || s.id === b?.referral_source_id).map(s => (
+            <option key={s.id} value={s.id}>{s.organization}{s.contact_name ? ` · ${s.contact_name}` : ''}</option>
+          ))}
+        </select>
+        <small>Which facility or professional sent this ride.</small></div>
+      <div className="fld"><label htmlFor="decline_reason">If declined, why?</label>
+        <select id="decline_reason" name="decline_reason" defaultValue={b?.decline_reason ?? ''}>
+          <option value="">Not declined</option>
+          {DECLINE_REASONS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+        </select>
+        <small>Only saved when status is Declined. It shows where we lose rides.</small></div>
       <div className="fld"><label htmlFor="contact_name">Contact name</label>
         <input id="contact_name" name="contact_name" defaultValue={b?.contact_name ?? ''} /></div>
       <div className="fld"><label htmlFor="relationship">Relationship to rider</label>

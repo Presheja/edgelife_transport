@@ -6,7 +6,7 @@ export default async function DriversTabs({ active }: { active: 'roster' | 'appl
   const db = serviceDb()!;
   const [{ count: roster }, { count: fresh }] = await Promise.all([
     db.from('drivers').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-    db.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+    db.from('applications').select('id', { count: 'exact', head: true }).is('seen_at', null),
   ]);
   return (
     <nav className="subtabs" aria-label="Drivers sections">

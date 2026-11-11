@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { serviceDb } from '@/lib/supabase/admin';
-import { notify } from '@/lib/mail';
+import { notify, sendToCustomer } from '@/lib/mail';
+import { getCompany } from '@/lib/settings';
+import { fmtDate, fmtTime } from '@/lib/admin-constants';
 import { clientIp, tooMany } from '@/lib/ratelimit';
 import { str, validEmail, validPhone } from '@/lib/validate';
 import { promises as fs } from 'fs';
@@ -71,7 +73,25 @@ export async function POST(req: Request) {
       ['Pickup', row.pickup], ['Destination', row.dropoff],
       ['Date', row.ride_date || ''], ['Time', row.ride_time || ''], ['Trip type', row.trip_type],
       ['Contact', row.contact_name], ['Email', email], ['Payment', row.payment], ['Notes', row.notes],
-    ]);
+    ], email || undefined);
+    if (email) {
+      const company = await getCompany();
+      const who = row.contact_name || riderName;
+      await sendToCustomer(email, 'We received your ride request',
+`Hi ${who.split(' ')[0]},
+
+Thank you for choosing EdgeLIFE Transportation. We have your request for ${riderName}${row.ride_date ? ` on ${fmtDate(row.ride_date)}` : ''}${row.ride_time ? ` at ${fmtTime(row.ride_time)}` : ''}.
+
+Your ride is not booked yet. Dispatch will call or text you with a firm price, usually the same business day. No card is needed until then.
+
+Pickup: ${row.pickup}
+Destination: ${row.dropoff}
+
+If anything changes, or the ride is urgent, call us at ${company.phone}.
+
+EdgeLIFE Transportation
+${company.phone}`);
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[EdgeLIFE] booking failed', e);

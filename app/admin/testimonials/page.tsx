@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth';
 import { serviceDb } from '@/lib/supabase/admin';
 import { addTestimonial, toggleTestimonial, deleteTestimonial } from '../actions';
+import GrowthTabs from '@/components/admin/GrowthTabs';
 
 export const metadata = { title: 'Testimonials' };
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,8 @@ export default async function Testimonials({ searchParams }: { searchParams: Pro
   return (
     <>
       <h1>Testimonials</h1>
-      <p className="sub">Only real reviews from real customers, used with their permission. The homepage section appears once at least one is published.</p>
+      <p className="sub">Only real reviews from real customers, used with their permission. The homepage section appears once at least three are published.</p>
+      <GrowthTabs active="testimonials" />
       {saved && <div className="flash good">Saved.</div>}
       {error && <div className="flash bad">A name and a quote are required.</div>}
       <form action={addTestimonial} className="adm-card">

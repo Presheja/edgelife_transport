@@ -36,7 +36,7 @@ export default async function Bookings({ searchParams }: { searchParams: Promise
           <table className="tbl"><thead><tr><th>Rider</th><th>Ride</th><th>Route</th><th>Status</th><th>Driver</th><th>Price</th><th>Received</th></tr></thead><tbody>
             {rows.map(b => (
               <tr key={b.id}>
-                <td><Link className="row" href={`/admin/bookings/${b.id}`}>{b.rider_name}</Link><small>{b.rider_phone}</small></td>
+                <td>{!b.seen_at && <span className="dot" title="Not opened yet" />}<Link className="row" href={`/admin/bookings/${b.id}`}>{b.rider_name}</Link><small>{b.rider_phone}</small></td>
                 <td>{fmtDate(b.ride_date) || 'No date'} {fmtTime(b.ride_time)}<small>{label(MOBILITY, b.mobility)}{b.memory_loss ? ' · memory loss' : ''}</small></td>
                 <td style={{ minWidth: 220 }}>{b.pickup}<small>to {b.dropoff}</small></td>
                 <td><span className={`pill ${b.status}`}>{label(BOOKING_STATUSES, b.status)}</span><small>{b.source === 'phone' ? 'Phone' : 'Website'}</small></td>

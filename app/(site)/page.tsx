@@ -183,7 +183,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {testimonials.length > 0 && (
+      {/* Reviews show only once there are at least three, so one lone quote never looks like the whole story. */}
+      {testimonials.length >= 3 && (
         <section className="dark">
           <div className="wrap">
             <div className="quote-big reveal">
@@ -193,6 +194,14 @@ export default async function Home() {
               <div className="mark">&ldquo;</div>
               <blockquote>{testimonials[0].quote}</blockquote>
               <cite><b>{testimonials[0].name}</b>{testimonials[0].role}</cite>
+            </div>
+            <div className="quote-row">
+              {testimonials.slice(1, 4).map(t => (
+                <figure className="quote-sm reveal" key={t.id}>
+                  <p>&ldquo;{t.quote}&rdquo;</p>
+                  <cite><b>{t.name}</b>{t.role}</cite>
+                </figure>
+              ))}
             </div>
           </div>
         </section>

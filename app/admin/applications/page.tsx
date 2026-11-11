@@ -27,7 +27,7 @@ export default async function Applications({ searchParams }: { searchParams: Pro
           <table className="tbl"><thead><tr><th>Applicant</th><th>Town</th><th>Experience</th><th>Availability</th><th>Status</th><th>Received</th></tr></thead><tbody>
             {rows.map(a => (
               <tr key={a.id}>
-                <td><Link className="row" href={`/admin/applications/${a.id}`}>{a.name}</Link><small>{a.phone}</small></td>
+                <td>{!a.seen_at && <span className="dot" title="Not opened yet" />}<Link className="row" href={`/admin/applications/${a.id}`}>{a.name}</Link><small>{a.phone}</small></td>
                 <td>{a.town}</td>
                 <td>{a.years}<small>{a.wheelchair_exp}</small></td>
                 <td>{a.availability}</td>

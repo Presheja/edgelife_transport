@@ -150,3 +150,24 @@ details.del .adm-card{margin-top:12px}
 .adm-shell.rail .sb-head .adm-brand .sb-label{display:none}
 @media (max-width:1099px) and (min-width:760px){.adm-shell .sb-head .adm-brand .sb-label{display:none}}
 @media (max-width:759px){.adm-shell.rail .sb-head .adm-brand .sb-label{display:flex}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brick);margin-right:7px;vertical-align:middle}
+.pill.declined{background:#ECEAE6;color:#6B6558}
+.fb-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.fb-msg{font-family:var(--serif);font-size:1.1rem;line-height:1.55;color:var(--navy-900);margin:0 0 16px;padding-left:14px;border-left:3px solid var(--olive-pale);white-space:pre-wrap}
+.fb .row-btn form{margin:0}
+/* referral pipeline colours */
+.pill.ref-prospect{background:#EEF0F4;color:#33415a}
+.pill.ref-contacted{background:#E4EEF8;color:#1E5A94}
+.pill.ref-qualified{background:#EFEFD9;color:#5C5E1E}
+.pill.ref-activated,.pill.ref-active{background:#E1F0E3;color:#1F6B2E}
+.pill.ref-repeat,.pill.ref-high_value{background:#1F6B2E;color:#fff}
+.pill.ref-dormant{background:#FFF4D6;color:#6B4E00}
+.pill.ref-closed{background:#ECEAE6;color:#6B6558}
+.report .adm-card .tbl td{padding:9px 4px}
+.report .adm-card .tbl tr:hover td{background:none}
+@media print{
+  .sb,.sb-mobile,.sb-scrim,.no-print,.subtabs{display:none!important}
+  .adm-main,.adm-shell .adm-main,.adm-shell.rail .adm-main{margin:0!important;padding:0!important;max-width:none}
+  .adm{background:#fff}
+  .adm-card{break-inside:avoid;border-color:#ccc}
+}

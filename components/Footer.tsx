@@ -32,6 +32,7 @@ export default function Footer({ company }: { company: Company }) {
               <li><Link href="/fleet">Our Fleet</Link></li>
               <li><Link href="/careers">Drive With Us</Link></li>
               <li><Link href="/book">Book a Ride</Link></li>
+              <li><Link href="/feedback">Leave Feedback</Link></li>
             </ul></div>
           </div>
           <div className="f-bot">

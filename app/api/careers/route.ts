@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     await notify('New driver application: ' + name, [
       ['Name', name], ['Phone', phone], ['Email', email], ['Town', row.town], ['License', row.license],
       ['Experience', row.years], ['Wheelchair', row.wheelchair_exp], ['Availability', row.availability], ['Notes', row.notes],
-    ]);
+    ], email || undefined);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[EdgeLIFE] application failed', e);

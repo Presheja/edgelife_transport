@@ -11,6 +11,8 @@ import { BOOKING_STATUSES, APPLICATION_STATUSES, DRIVER_STATUSES, NEEDS_WHEELCHA
 import { DEFAULT_COMPANY } from '@/lib/settings';
 import { DEFAULT_RATES } from '@/lib/rates';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, LOG_KINDS } from '@/lib/vehicles';
+import { FEEDBACK_STATUSES, creditName, creditRole } from '@/lib/feedback';
+import { ORG_TYPES, SOURCE_STATUSES, TOUCH_KINDS, DECLINE_REASONS, PRE_ACTIVATION, suggestedFollowUp, todayET, addDays } from '@/lib/referrals';
 
 function db() {
   const c = serviceDb();
@@ -77,6 +79,8 @@ function bookingFields(fd: FormData) {
     notes: str(fd.get('notes'), 2000) || null,
     quoted_price: num(fd.get('quoted_price')),
     internal_notes: str(fd.get('internal_notes'), 4000) || null,
+    referral_source_id: /^[0-9a-f-]{36}$/i.test(str(fd.get('referral_source_id'), 60)) ? str(fd.get('referral_source_id'), 60) : null,
+    decline_reason: str(fd.get('status'), 20) === 'declined' ? (ok(DECLINE_REASONS, str(fd.get('decline_reason'), 30), 'other')) : null,
   };
 }
 
@@ -141,20 +145,45 @@ async function driverWarnings(bookingId: string, row: Awaited<ReturnType<typeof 
 }
 const warnQuery = (w: string[]) => (w.length ? '&warn=' + w.join(',') : '');
 
+/* Ride activity moves a referral source along the SOP pipeline, and the first
+   completed ride from a source schedules the after-ride check-in (SOP section 9). */
+async function referralActivity(sourceId: string | null, status: string, adminEmail: string) {
+  if (!sourceId) return;
+  const [{ data: src }, { count: total }, { count: done }] = await Promise.all([
+    db().from('referral_sources').select('status').eq('id', sourceId).maybeSingle(),
+    db().from('bookings').select('id', { count: 'exact', head: true }).eq('referral_source_id', sourceId),
+    db().from('bookings').select('id', { count: 'exact', head: true }).eq('referral_source_id', sourceId).eq('status', 'completed'),
+  ]);
+  if (!src) return;
+  const patch: Record<string, unknown> = {};
+  if ((total ?? 0) >= 2 && ['prospect', 'contacted', 'qualified', 'activated', 'active', 'dormant'].includes(src.status)) patch.status = 'repeat';
+  else if ((total ?? 0) >= 1 && PRE_ACTIVATION.includes(src.status)) patch.status = 'activated';
+  if (status === 'completed' && done === 1) {
+    const { count: checked } = await db().from('referral_touches').select('id', { count: 'exact', head: true }).eq('source_id', sourceId).eq('kind', 'after_ride');
+    if (!checked) {
+      patch.next_follow_up = addDays(todayET(), 2);
+      await db().from('referral_touches').insert({ source_id: sourceId, kind: 'note', created_by: adminEmail,
+        outcome: 'First completed ride from this source. Check in within 1-2 business days to confirm it went smoothly and thank them.' });
+    }
+  }
+  if (Object.keys(patch).length) await db().from('referral_sources').update(patch).eq('id', sourceId);
+}
+
 export async function createBooking(fd: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const base = bookingFields(fd);
   if (!base.rider_name || !base.rider_phone) redirect('/admin/bookings/new?error=required');
   const row = await withDriver(fd, base);
-  const { data, error } = await db().from('bookings').insert({ ...row, source: 'phone' }).select('id').single();
+  const { data, error } = await db().from('bookings').insert({ ...row, source: 'phone', seen_at: new Date().toISOString() }).select('id').single();
   if (error || !data) redirect('/admin/bookings/new?error=save');
   const warns = await driverWarnings(data.id, row);
+  await referralActivity(row.referral_source_id, row.status, admin.email);
   revalidatePath('/admin', 'layout');
   redirect(`/admin/bookings/${data.id}?saved=1${warnQuery(warns)}`);
 }
 
 export async function updateBooking(fd: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = str(fd.get('id'), 60);
   const base = bookingFields(fd);
   if (!id) redirect('/admin/bookings');
@@ -163,6 +192,7 @@ export async function updateBooking(fd: FormData) {
   const { error } = await db().from('bookings').update(row).eq('id', id);
   if (error) redirect(`/admin/bookings/${id}?error=save`);
   const warns = await driverWarnings(id, row);
+  await referralActivity(row.referral_source_id, row.status, admin.email);
   revalidatePath('/admin', 'layout');
   redirect(`/admin/bookings/${id}?saved=1${warnQuery(warns)}`);
 }
@@ -425,6 +455,124 @@ export async function saveSettings(fd: FormData) {
   if (error) redirect('/admin/settings?error=save');
   refreshSite();
   redirect('/admin/settings?saved=1');
+}
+
+/* ---------- referral network ---------- */
+function sourceFields(fd: FormData) {
+  const type = ok(ORG_TYPES, str(fd.get('org_type'), 30), 'other');
+  const tier = Number(fd.get('tier'));
+  return {
+    organization: str(fd.get('organization'), 160),
+    org_type: type,
+    tier: tier === 1 || tier === 2 ? tier : (ORG_TYPES.find(t => t.id === type)?.tier ?? 2),
+    area: str(fd.get('area'), 200) || null,
+    contact_name: str(fd.get('contact_name'), 120) || null,
+    contact_role: str(fd.get('contact_role'), 120) || null,
+    phone: str(fd.get('phone'), 40) || null,
+    email: str(fd.get('email'), 160) || null,
+    preferred_contact: str(fd.get('preferred_contact'), 200) || null,
+    status: ok(SOURCE_STATUSES, str(fd.get('status'), 20), 'prospect'),
+    info_sent: fd.get('info_sent') === 'on',
+    next_follow_up: day(fd.get('next_follow_up')),
+    notes: str(fd.get('notes'), 4000) || null,
+  };
+}
+
+export async function createSource(fd: FormData) {
+  await requireAdmin();
+  const row = sourceFields(fd);
+  if (!row.organization) redirect('/admin/referrals/new?error=required');
+  const { data, error } = await db().from('referral_sources').insert({ ...row, next_follow_up: row.next_follow_up || todayET() }).select('id').single();
+  if (error || !data) redirect('/admin/referrals/new?error=save');
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/referrals/${data.id}?saved=1`);
+}
+
+export async function updateSource(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (!UUID.test(id)) redirect('/admin/referrals');
+  const row = sourceFields(fd);
+  if (!row.organization) redirect(`/admin/referrals/${id}?error=required`);
+  const { error } = await db().from('referral_sources').update(row.status === 'closed' ? { ...row, next_follow_up: null } : row).eq('id', id);
+  if (error) redirect(`/admin/referrals/${id}?error=save`);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/referrals/${id}?saved=1`);
+}
+
+export async function deleteSource(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (fd.get('confirm') !== 'yes') redirect(`/admin/referrals/${id}?error=confirm`);
+  await db().from('referral_sources').delete().eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect('/admin/referrals');
+}
+
+export async function logTouch(fd: FormData) {
+  const admin = await requireAdmin();
+  const sourceId = str(fd.get('source_id'), 60);
+  if (!UUID.test(sourceId)) redirect('/admin/referrals');
+  const kind = ok(TOUCH_KINDS, str(fd.get('kind'), 20), 'call');
+  const date = day(fd.get('touch_date')) || todayET();
+  const { error } = await db().from('referral_touches').insert({
+    source_id: sourceId, kind, touch_date: date, outcome: str(fd.get('outcome'), 2000) || null, created_by: admin.email,
+  });
+  if (error) redirect(`/admin/referrals/${sourceId}?error=save#touch`);
+
+  const { data: src } = await db().from('referral_sources').select('status, first_contacted, last_contact').eq('id', sourceId).maybeSingle();
+  const outward = kind !== 'note';
+  const patch: Record<string, unknown> = {};
+  if (outward) {
+    patch.last_contact = !src?.last_contact || date > src.last_contact ? date : src.last_contact;
+    if (!src?.first_contacted || date < src.first_contacted) patch.first_contacted = date;
+    if (src?.status === 'prospect') patch.status = 'contacted';
+  }
+  if (kind === 'info_sent' || fd.get('info_sent') === 'on') patch.info_sent = true;
+  const nextStatus = ok(SOURCE_STATUSES, str(fd.get('new_status'), 20), '');
+  if (nextStatus) patch.status = nextStatus;
+  const next = day(fd.get('next_follow_up'));
+  if (next) patch.next_follow_up = next;
+  else if (fd.get('clear_follow_up') === 'on') patch.next_follow_up = null;
+  if (patch.status === 'closed') patch.next_follow_up = null;
+  if (Object.keys(patch).length) await db().from('referral_sources').update(patch).eq('id', sourceId);
+  revalidatePath('/admin', 'layout');
+  redirect(`/admin/referrals/${sourceId}?saved=touch#touch`);
+}
+
+export async function deleteTouch(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60), sourceId = str(fd.get('source_id'), 60);
+  if (UUID.test(id)) await db().from('referral_touches').delete().eq('id', id);
+  redirect(`/admin/referrals/${sourceId}?saved=removed#touch`);
+}
+
+/* ---------- feedback ---------- */
+export async function publishFeedback(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  if (!UUID.test(id)) redirect('/admin/feedback');
+  const { data: f } = await db().from('feedback').select('*').eq('id', id).maybeSingle();
+  // Consent is checked on the server too, never just hidden in the UI.
+  if (!f || !f.allow_publish) redirect('/admin/feedback');
+  if (f.testimonial_id) redirect('/admin/testimonials');
+  const { data: t, error } = await db().from('testimonials').insert({
+    name: creditName(f.name, f.credit), role: creditRole(f.relationship), quote: f.message, published: true, feedback_id: f.id,
+  }).select('id').single();
+  if (error || !t) redirect('/admin/feedback?saved=0');
+  await db().from('feedback').update({ status: 'published', testimonial_id: t.id }).eq('id', id);
+  refreshSite();
+  revalidatePath('/admin', 'layout');
+  redirect('/admin/feedback?saved=published');
+}
+
+export async function setFeedbackStatus(fd: FormData) {
+  await requireAdmin();
+  const id = str(fd.get('id'), 60);
+  const status = ok(FEEDBACK_STATUSES, str(fd.get('status'), 20), 'reviewed');
+  if (UUID.test(id) && status !== 'published') await db().from('feedback').update({ status }).eq('id', id);
+  revalidatePath('/admin', 'layout');
+  redirect('/admin/feedback?saved=1');
 }
 
 /* ---------- testimonials ---------- */

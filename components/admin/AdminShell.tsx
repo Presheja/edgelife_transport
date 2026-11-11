@@ -27,7 +27,7 @@ function I({ n, size = 20 }: { n: IconName; size?: number }) {
   }
 }
 
-export interface ShellCounts { bookings: number; applications: number; vehicles: number }
+export interface ShellCounts { bookings: number; applications: number; vehicles: number; growth: number }
 
 export default function AdminShell({ email, counts, signOut, children }: {
   email: string; counts: ShellCounts; signOut: () => Promise<void>; children: React.ReactNode;
@@ -60,7 +60,7 @@ export default function AdminShell({ email, counts, signOut, children }: {
     { href: '/admin/drivers', label: 'Drivers', icon: 'drivers' as const, on: is('/admin/drivers', '/admin/applications'), badge: counts.applications },
     { href: '/admin/vehicles', label: 'Vehicles', icon: 'van' as const, on: is('/admin/vehicles'), badge: counts.vehicles },
     { href: '/admin/rates', label: 'Rates', icon: 'tag' as const, on: is('/admin/rates') },
-    { href: '/admin/testimonials', label: 'Testimonials', icon: 'quote' as const, on: is('/admin/testimonials') },
+    { href: '/admin/testimonials', label: 'Testimonials', icon: 'quote' as const, on: is('/admin/testimonials', '/admin/feedback', '/admin/referrals'), badge: counts.growth },
   ];
   const foot = [
     { href: '/admin/settings', label: 'Site settings', icon: 'gear' as const, on: is('/admin/settings') },

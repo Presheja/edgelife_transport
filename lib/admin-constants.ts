@@ -3,6 +3,7 @@ export const BOOKING_STATUSES = [
   { id: 'confirmed', label: 'Confirmed' },
   { id: 'assigned',  label: 'Assigned' },
   { id: 'completed', label: 'Completed' },
+  { id: 'declined',  label: 'Declined (we couldn\u2019t take it)' },
   { id: 'cancelled', label: 'Cancelled' },
   { id: 'no_show',   label: 'No-show' },
 ] as const;
@@ -49,12 +50,14 @@ export interface Booking {
   trip_type: string | null; contact_name: string | null; relationship: string | null; email: string | null;
   payment: string | null; notes: string | null; quoted_price: number | null; driver: string | null; driver_id: string | null;
   vehicle: string | null; vehicle_id: string | null; internal_notes: string | null;
+  seen_at: string | null; referral_source_id: string | null; decline_reason: string | null;
 }
 
 export interface Application {
   id: string; created_at: string; status: string; name: string; phone: string; email: string | null;
   town: string | null; license: string | null; years: string | null; wheelchair_exp: string | null;
   availability: string | null; consent_screening: boolean; notes: string | null; internal_notes: string | null;
+  seen_at: string | null;
 }
 
 export interface Driver {

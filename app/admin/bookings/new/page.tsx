@@ -10,9 +10,10 @@ export const metadata = { title: 'New booking' };
 export default async function NewBooking({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requireAdmin();
   const { error } = await searchParams;
-  const [{ data }, { data: veh }] = await Promise.all([
+  const [{ data }, { data: veh }, { data: src }] = await Promise.all([
     serviceDb()!.from('drivers').select('*').eq('status', 'active').order('name'),
     serviceDb()!.from('vehicles').select('*').eq('status', 'active').order('name'),
+    serviceDb()!.from('referral_sources').select('id, organization, contact_name, status').neq('status', 'closed').order('organization'),
   ]);
   const drivers = (data || []) as Driver[];
   const vehicles = (veh || []) as Vehicle[];
@@ -22,7 +23,7 @@ export default async function NewBooking({ searchParams }: { searchParams: Promi
       <p className="sub">Enter a ride taken by phone so it lives in the same list as website requests.</p>
       {error && <div className="flash bad">{error === 'required' ? 'Rider name and phone are required.' : 'Could not save. Try again.'}</div>}
       <form action={createBooking} className="adm-card">
-        <AdminBookingFields drivers={drivers} vehicles={vehicles} />
+        <AdminBookingFields drivers={drivers} vehicles={vehicles} sources={src || []} />
         <div className="row-btn"><button className="abtn pri" type="submit">Save booking</button></div>
       </form>
     </>

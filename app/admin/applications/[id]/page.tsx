@@ -5,6 +5,8 @@ import { APPLICATION_STATUSES, fmtStamp, type Application } from '@/lib/admin-co
 import Link from 'next/link';
 import { updateApplication, deleteApplication, hireApplicant } from '../../actions';
 import { telHref } from '@/lib/format';
+import RefreshBadges from '@/components/admin/RefreshBadges';
+import { markSeen } from '@/lib/seen';
 
 export const metadata = { title: 'Application' };
 
@@ -18,10 +20,12 @@ export default async function ApplicationDetail({ params, searchParams }: {
   const { data } = await serviceDb()!.from('applications').select('*').eq('id', id).maybeSingle();
   if (!data) notFound();
   const a = data as Application;
+  const firstOpen = await markSeen('applications', a.id, a.seen_at);
   const { data: driver } = await serviceDb()!.from('drivers').select('id').eq('application_id', id).maybeSingle();
   return (
     <>
       <p className="sub" style={{ marginBottom: 6 }}><Link href="/admin/applications" style={{ color: 'var(--steel)' }}>&larr; Applications</Link></p>
+      {firstOpen && <RefreshBadges />}
       <h1>{a.name}</h1>
       <p className="sub">Applied {fmtStamp(a.created_at)}</p>
       {saved && <div className="flash good">Saved.</div>}
