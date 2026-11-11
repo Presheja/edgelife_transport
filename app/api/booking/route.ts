@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     if (db) {
       const { error } = await db.from('bookings').insert(row);
       if (error) {
-        console.error('[EdgeLIFE] booking database error', error.code);
+        console.error('[EdgeLIFE] booking database error', { code: error.code, message: error.message, hint: error.hint, details: error.details });
         return NextResponse.json({ ok: false, error: 'We could not save your request. Please call dispatch to arrange your ride.' }, { status: 503 });
       }
     } else if (process.env.NODE_ENV !== 'production') {

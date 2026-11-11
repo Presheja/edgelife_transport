@@ -87,3 +87,10 @@ alter table settings     enable row level security;
 alter table bookings     enable row level security;
 alter table applications enable row level security;
 alter table testimonials enable row level security;
+
+-- Data API access. Since 2026, Supabase no longer grants new tables to the API
+-- roles automatically, so without these lines even the server's secret key gets
+-- "permission denied for table ..." (Postgres error 42501).
+-- Only service_role (the server) is granted. anon and authenticated get nothing.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table settings, bookings, applications, testimonials to service_role;

@@ -41,7 +41,10 @@ export async function POST(req: Request) {
     const db = serviceDb();
     if (db) {
       const { error } = await db.from('applications').insert(row);
-      if (error) throw error;
+      if (error) {
+        console.error('[EdgeLIFE] application database error', { code: error.code, message: error.message, hint: error.hint, details: error.details });
+        return NextResponse.json({ ok: false, error: 'We could not save your application. Please call us and we will take it by phone.' }, { status: 503 });
+      }
     } else if (process.env.NODE_ENV !== 'production') {
       const file = path.join(process.cwd(), 'data', 'submissions.ndjson');
       await fs.mkdir(path.dirname(file), { recursive: true });
